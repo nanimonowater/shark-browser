@@ -984,6 +984,8 @@ function wvEvents(wv,id){
   wv.addEventListener('did-navigate', async e => {
     const tab = tabs.find(t=>t.id===id); if(tab) tab.url=e.url;
     if(id===activeId){$('urlbar').value=e.url; bmToggleUpdate(e.url);}
+    // Inject font into page
+    injectFontIntoWv(wv);
     // Inject plugins
     try {
       const injections = await window.shark.getPluginInjections(e.url);
@@ -996,9 +998,10 @@ function wvEvents(wv,id){
       }
     } catch(err) {}
   });
-  wv.addEventListener('did-navigate-in-page',e=>{
+  wv.addEventListener('did-navigate-in-page', e => {
     const tab=tabs.find(t=>t.id===id); if(tab) tab.url=e.url;
     if(id===activeId){$('urlbar').value=e.url; bmToggleUpdate(e.url);}
+    injectFontIntoWv(wv);
   });
   wv.addEventListener('page-title-updated',e=>{
     setTabTitle(id,e.title);
@@ -1825,6 +1828,18 @@ $('ctx-close-tab').onclick = () => { if(activeId) closeTab(activeId); hideCtxMen
 
 // ── Font system ───────────────────────────────────────────────
 let availableFonts = [];
+let currentFontCSS = ''; // cached @font-face + body CSS for webview injection
+
+// Inject font CSS into a single webview
+function injectFontIntoWv(wv) {
+  if (!currentFontCSS) return;
+  wv.insertCSS(currentFontCSS).catch(() => {});
+}
+
+// Inject font CSS into ALL open webviews
+function injectFontIntoAllWv() {
+  document.querySelectorAll('webview').forEach(wv => injectFontIntoWv(wv));
+}
 
 async function loadFontList() {
   availableFonts = await window.shark.getFonts();
@@ -1842,14 +1857,19 @@ async function loadFontList() {
 
 async function applyFont(filename) {
   if (!filename) {
+    // Reset
     document.documentElement.style.removeProperty('--font-family');
+    currentFontCSS = '';
+    injectFontIntoAllWv();
     return;
   }
   try {
     const data = await window.shark.getFontData(filename);
     if (!data) return;
     const fontName = 'SharkCustomFont';
-    const css = `@font-face {
+
+    // Apply to browser UI
+    const uiCss = `@font-face {
       font-family: '${fontName}';
       src: url('data:font/${data.mime};base64,${data.base64}') format('${data.mime}');
       font-weight: normal; font-style: normal;
@@ -1860,10 +1880,24 @@ async function applyFont(filename) {
       styleEl.id = 'shark-custom-font-style';
       document.head.appendChild(styleEl);
     }
-    styleEl.textContent = css;
+    styleEl.textContent = uiCss;
     document.documentElement.style.setProperty(
       '--font-family', `'${fontName}', -apple-system, 'Segoe UI', 'Noto Sans JP', sans-serif`
     );
+
+    // Build CSS for webview injection (font-face + override body/all elements)
+    currentFontCSS = `
+@font-face {
+  font-family: '${fontName}';
+  src: url('data:font/${data.mime};base64,${data.base64}') format('${data.mime}');
+  font-weight: normal; font-style: normal;
+}
+html, body, * {
+  font-family: '${fontName}', -apple-system, 'Segoe UI', 'Noto Sans JP', sans-serif !important;
+}`;
+
+    // Apply to all currently open webviews
+    injectFontIntoAllWv();
   } catch(e) { console.error('Font apply failed', e); }
 }
 
