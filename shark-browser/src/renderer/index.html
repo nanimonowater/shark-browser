@@ -455,6 +455,91 @@ webview.active{display:flex;}
 .plugin-btn.primary{border-color:var(--accent);color:var(--accent);}
 .plugin-btn.primary:hover{background:var(--accent);color:#fff;}
 
+/* ── Fullscreen mode ── */
+/* Fullscreen: pull ALL bars out of flow by fixing them off-screen */
+body.is-fullscreen #titlebar,
+body.is-fullscreen #tabbar,
+body.is-fullscreen #toolbar {
+  position: fixed !important;
+  top: -200px !important;
+  left: 0; right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: top 0.22s ease, opacity 0.22s ease;
+  z-index: 800;
+}
+body.is-fullscreen #statusbar {
+  position: fixed !important;
+  bottom: -60px !important;
+  left: 0; right: 0;
+  opacity: 0;
+  pointer-events: none;
+  transition: bottom 0.22s ease, opacity 0.22s ease;
+  z-index: 800;
+}
+
+/* Reveal zone — invisible strip at top of screen */
+body.is-fullscreen #fs-reveal-zone {
+  display: block;
+}
+
+/* Bars revealed on hover */
+body.is-fullscreen.fs-bars-visible #titlebar {
+  top: 0 !important;
+  opacity: 1;
+  pointer-events: all;
+}
+body.is-fullscreen.fs-bars-visible #tabbar {
+  top: 38px !important;   /* height of titlebar */
+  opacity: 1;
+  pointer-events: all;
+}
+body.is-fullscreen.fs-bars-visible #toolbar {
+  top: 76px !important;   /* titlebar + tabbar */
+  opacity: 1;
+  pointer-events: all;
+}
+body.is-fullscreen.fs-bars-visible #statusbar {
+  bottom: 0 !important;
+  opacity: 1;
+  pointer-events: all;
+}
+
+/* webviews + content fills full window in fullscreen */
+body.is-fullscreen #content {
+  position: fixed !important;
+  top: 0 !important; left: 0; right: 0; bottom: 0;
+}
+
+/* Fullscreen indicator */
+#fs-indicator {
+  display: none;
+  position: fixed;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.6);
+  color: #fff;
+  font-size: 11px;
+  padding: 4px 12px;
+  border-radius: 12px;
+  z-index: 9998;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.3s;
+}
+body.is-fullscreen #fs-indicator { display: block; }
+
+/* Reveal zone strip */
+#fs-reveal-zone {
+  display: none;
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 6px;
+  z-index: 9997;
+  background: transparent;
+}
+
 /* ── Context menu ── */
 #ctx-menu{
   position:fixed;display:none;z-index:9990;
@@ -606,10 +691,13 @@ webview.active{display:flex;}
     </div>
     <!-- Plugins -->
     <div class="sb-panel" id="panel-plugins">
+      <div style="padding:8px;display:flex;gap:5px;flex-shrink:0;border-bottom:1px solid var(--border);">
+        <button class="sb-btn" id="btn-install-plugin" style="flex:1">📦 ZIPからインストール</button>
+        <button class="sb-btn" id="btn-reload-plugins" style="flex:1">↺ 再読み込み</button>
+      </div>
       <div class="sb-list" id="plugin-list"></div>
-      <div class="sb-footer" style="font-size:10px;color:var(--txt3);padding:8px 10px;line-height:1.6;">
-        プラグインは <code>plugins/</code> フォルダに置いてください。<br>
-        詳細: <code>plugins/PLUGIN_GUIDE.md</code>
+      <div class="sb-footer" style="display:flex;gap:5px;">
+        <button class="sb-btn" id="btn-open-plugins-dir" style="flex:1">📁 フォルダを開く</button>
       </div>
     </div>
     <!-- Downloads -->
@@ -772,6 +860,10 @@ webview.active{display:flex;}
   padding:3px 12px;border-radius:20px;z-index:9999;pointer-events:none;letter-spacing:.05em;">
   🕵 プライベートモード
 </div>
+
+<!-- Fullscreen: reveal zone (hover to show bars) -->
+<div id="fs-reveal-zone"></div>
+<div id="fs-indicator">F11 で通常表示に戻る</div>
 
 <!-- Transparent overlay to catch clicks outside context menu -->
 <div id="ctx-overlay" style="display:none;position:fixed;inset:0;z-index:9989;"></div>
@@ -1436,29 +1528,157 @@ $('wbtn-max').onclick   = () => window.shark.maximize();
 $('wbtn-close').onclick = () => window.shark.close();
 
 // ── Fullscreen ─────────────────────────────────────────────────
-window.shark.onFullscreen(full=>{
-  $('titlebar').style.display=full?'none':'flex';
+// ── Fullscreen: auto-hide bars, hover to reveal ───────────────
+let fsHideTimer = null;
+
+function showFsBars() {
+  clearTimeout(fsHideTimer);
+  document.body.classList.add('fs-bars-visible');
+}
+
+function scheduleFsHide() {
+  clearTimeout(fsHideTimer);
+  fsHideTimer = setTimeout(() => {
+    document.body.classList.remove('fs-bars-visible');
+  }, 2000); // hide after 2s of no hover
+}
+
+window.shark.onFullscreen(full => {
+  if (full) {
+    document.body.classList.add('is-fullscreen');
+    // Show bars briefly then hide
+    showFsBars();
+    scheduleFsHide();
+    // Flash indicator
+    const ind = $('fs-indicator');
+    ind.style.opacity = '1';
+    setTimeout(() => { ind.style.opacity = '0'; }, 2500);
+  } else {
+    document.body.classList.remove('is-fullscreen', 'fs-bars-visible');
+    clearTimeout(fsHideTimer);
+  }
 });
 
-// ── Keyboard shortcuts ─────────────────────────────────────────
-document.addEventListener('keydown',e=>{
-  if(e.key==='F11'){e.preventDefault(); window.shark.fullscreen(); return;}
-  if(e.ctrlKey||e.metaKey){
-    switch(e.key){
-      case 't': e.preventDefault(); createTab('newtab'); break;
-      case 'w': e.preventDefault(); if(activeId) closeTab(activeId); break;
-      case 'l': e.preventDefault(); urlbar.focus(); urlbar.select(); break;
-      case 'r': e.preventDefault(); $('btn-reload').click(); break;
-      case 'f': e.preventDefault(); toggleFind(); break;
-      case 'd': e.preventDefault(); $('btn-bm').click(); break;
-      case 'b': e.preventDefault(); document.querySelector('.sbtab[data-p="bookmarks"]').click(); break;
-      case 'h': e.preventDefault(); document.querySelector('.sbtab[data-p="history"]').click(); break;
+// Reveal zone: mouse enters top 6px → show bars
+$('fs-reveal-zone').addEventListener('mouseenter', () => {
+  if (!document.body.classList.contains('is-fullscreen')) return;
+  showFsBars();
+});
+
+// Keep bars visible while hovering over them
+['titlebar','tabbar','toolbar'].forEach(id => {
+  const el = $(id);
+  el.addEventListener('mouseenter', () => {
+    if (!document.body.classList.contains('is-fullscreen')) return;
+    showFsBars();
+  });
+  el.addEventListener('mouseleave', () => {
+    if (!document.body.classList.contains('is-fullscreen')) return;
+    scheduleFsHide();
+  });
+});
+
+$('fs-reveal-zone').addEventListener('mouseleave', () => {
+  if (!document.body.classList.contains('is-fullscreen')) return;
+  // Don't hide immediately — toolbar mouseenter will keep it open
+  scheduleFsHide();
+});
+
+// ── Shortcut modal ─────────────────────────────────────────────
+const SHORTCUT_LIST = [
+  { key: 'Ctrl + T',          desc: '新しいタブを開く' },
+  { key: 'Ctrl + W',          desc: '現在のタブを閉じる' },
+  { key: 'Ctrl + Tab',        desc: '次のタブへ' },
+  { key: 'Ctrl + Shift + Tab',desc: '前のタブへ' },
+  { key: 'Ctrl + L',          desc: 'URLバーにフォーカス' },
+  { key: 'Ctrl + R',          desc: 'ページを更新' },
+  { key: 'Ctrl + F',          desc: 'ページ内検索' },
+  { key: 'Ctrl + D',          desc: 'ブックマークに追加/削除' },
+  { key: 'Ctrl + B',          desc: 'ブックマークサイドバー' },
+  { key: 'Ctrl + H',          desc: '履歴サイドバー' },
+  { key: 'Ctrl + /',          desc: 'ショートカット一覧' },
+  { key: 'Alt + ←',           desc: '戻る' },
+  { key: 'Alt + →',           desc: '進む' },
+  { key: 'F11',               desc: 'フルスクリーン切替' },
+];
+
+function showShortcutModal() {
+  let modal = document.getElementById('shortcut-modal');
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'shortcut-modal';
+    modal.style.cssText = `
+      position:fixed;inset:0;z-index:99999;
+      background:rgba(0,0,0,0.55);
+      display:flex;align-items:center;justify-content:center;
+    `;
+    modal.innerHTML = `
+      <div style="
+        background:var(--surface);border:1px solid var(--borderS);
+        border-radius:14px;padding:24px 28px;min-width:340px;max-width:460px;
+        box-shadow:0 16px 48px rgba(0,0,0,0.5);
+      ">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
+          <span style="font-size:15px;font-weight:700;color:var(--txt)">⌨ ショートカット一覧</span>
+          <button id="shortcut-modal-close" style="
+            border:none;background:transparent;color:var(--txt2);
+            font-size:20px;cursor:pointer;line-height:1;padding:0 4px;
+          ">×</button>
+        </div>
+        <div style="display:grid;gap:6px;">
+          ${SHORTCUT_LIST.map(s=>`
+            <div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);">
+              <span style="font-size:12px;color:var(--txt2)">${s.desc}</span>
+              <kbd style="
+                background:var(--raised);border:1px solid var(--border);
+                border-radius:5px;padding:2px 8px;font-size:11px;
+                color:var(--accent);font-family:monospace;white-space:nowrap;
+              ">${s.key}</kbd>
+            </div>`).join('')}
+        </div>
+        <div style="margin-top:12px;font-size:10px;color:var(--txt3);text-align:center;">
+          Escキーまたは外側クリックで閉じる
+        </div>
+      </div>`;
+    document.body.appendChild(modal);
+    modal.addEventListener('mousedown', e => { if(e.target===modal) closeShortcutModal(); });
+    modal.querySelector('#shortcut-modal-close').onclick = closeShortcutModal;
+  }
+  modal.style.display = 'flex';
+}
+function closeShortcutModal() {
+  const m = document.getElementById('shortcut-modal');
+  if (m) m.style.display = 'none';
+}
+
+// ── Global shortcut handler (IPC from main process) ────────────
+window.shark.onShortcut(action => {
+  switch(action) {
+    case 'new-tab':            createTab('newtab'); break;
+    case 'close-tab':          if(activeId) closeTab(activeId); break;
+    case 'reload':             $('btn-reload').click(); break;
+    case 'focus-url':          urlbar.focus(); urlbar.select(); break;
+    case 'find':               toggleFind(); break;
+    case 'bookmark':           $('btn-bm').click(); break;
+    case 'sidebar-bookmarks':  document.querySelector('.sbtab[data-p="bookmarks"]').click(); break;
+    case 'sidebar-history':    document.querySelector('.sbtab[data-p="history"]').click(); break;
+    case 'back':               $('btn-back').click(); break;
+    case 'forward':            $('btn-fwd').click(); break;
+    case 'next-tab': {
+      if(tabs.length>1){ const i=tabs.findIndex(t=>t.id===activeId); activateTab(tabs[(i+1)%tabs.length].id); }
+      break;
     }
+    case 'prev-tab': {
+      if(tabs.length>1){ const i=tabs.findIndex(t=>t.id===activeId); activateTab(tabs[(i-1+tabs.length)%tabs.length].id); }
+      break;
+    }
+    case 'show-shortcuts': showShortcutModal(); break;
   }
-  if(e.altKey){
-    if(e.key==='ArrowLeft')  $('btn-back').click();
-    if(e.key==='ArrowRight') $('btn-fwd').click();
-  }
+});
+
+// Escape closes shortcut modal
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape') closeShortcutModal();
 });
 
 // ── Adblock toggle ────────────────────────────────────────────
@@ -1473,6 +1693,24 @@ let pluginList = [];
 async function loadPluginPanel() {
   pluginList = await window.shark.getPlugins();
   renderPluginPanel();
+  // Attach panel action buttons
+  $('btn-install-plugin').onclick = async () => {
+    const r = await window.shark.installPluginZip();
+    if (r.ok) {
+      pluginList = await window.shark.getPlugins();
+      renderPluginPanel();
+      toast(`🧩 ${r.name} をインストールしました`);
+    } else {
+      toast(`インストール失敗: ${r.reason||'不明'}`);
+    }
+  };
+  $('btn-reload-plugins').onclick = async () => {
+    await window.shark.reloadPlugins();
+    pluginList = await window.shark.getPlugins();
+    renderPluginPanel();
+    toast('🧩 プラグインを再読み込みしました');
+  };
+  $('btn-open-plugins-dir').onclick = () => window.shark.openPluginsDir();
 }
 
 function renderPluginPanel() {
@@ -1480,11 +1718,11 @@ function renderPluginPanel() {
   if (!pluginList.length) {
     el.innerHTML = `<div class="sb-empty">
       プラグインがありません<br>
-      <span style="font-size:10px">plugins/ フォルダにプラグインを追加してください</span>
+      <span style="font-size:10px">ZIPからインストールするか<br>plugins/ フォルダに追加してください</span>
     </div>`;
     return;
   }
-  el.innerHTML = pluginList.map((p, i) => `
+  el.innerHTML = pluginList.map((p) => `
     <div class="plugin-item" data-id="${p.id}">
       <div class="plugin-header">
         <span class="plugin-name">🧩 ${p.name}</span>
@@ -1494,13 +1732,15 @@ function renderPluginPanel() {
         </div>
       </div>
       <div class="plugin-desc">${p.description||''}</div>
-      <div class="plugin-author">by ${p.author||'Unknown'}${p.homepage?` · <a href="#" data-href="${p.homepage}" style="color:var(--accent)">GitHub</a>`:''}</div>
-      ${p.settings&&p.settings.length?`
+      <div class="plugin-author" style="margin-bottom:4px;">by ${p.author||'Unknown'}${p.homepage?` · <a href="#" data-href="${p.homepage}" style="color:var(--accent)">GitHub</a>`:''}</div>
       <div class="plugin-actions">
-        <button class="plugin-btn" data-plugin-cfg="${p.id}">⚙ 設定</button>
+        ${p.settings&&p.settings.length?`<button class="plugin-btn" data-plugin-cfg="${p.id}">⚙ 設定</button>`:''}
+        ${p.hasBackground?`<button class="plugin-btn" data-plugin-bg="${p.id}">▶ background起動</button>`:''}
+        ${p.hasOverrides?`<button class="plugin-btn" data-plugin-override="${p.id}">🔧 ファイル適用</button><button class="plugin-btn" data-plugin-unoverride="${p.id}">↩ 元に戻す</button>`:''}
       </div>
+      ${p.settings&&p.settings.length?`
       <div class="plugin-settings" id="pcfg-${p.id}">
-        ${p.settings.map(s => `
+        ${p.settings.map(s=>`
           <div class="plugin-setting-row">
             <label>${s.label}</label>
             ${s.type==='toggle'
@@ -1509,7 +1749,7 @@ function renderPluginPanel() {
             }
           </div>`).join('')}
         <button class="plugin-btn primary" data-plugin-save="${p.id}">保存</button>
-      </div>`:'' }
+      </div>`:''}
     </div>`).join('');
 
   // Toggle enable/disable
@@ -1517,46 +1757,55 @@ function renderPluginPanel() {
     tog.onclick = async () => {
       const id = tog.dataset.pluginId;
       tog.classList.toggle('on');
-      const enabled = tog.classList.contains('on');
-      await window.shark.setPluginEnabled(id, enabled);
+      await window.shark.setPluginEnabled(id, tog.classList.contains('on'));
       const p = pluginList.find(x=>x.id===id);
-      if (p) p.enabled = enabled;
-      toast(`🧩 ${id}: ${enabled?'有効':'無効'}にしました`);
+      if (p) p.enabled = tog.classList.contains('on');
+      toast(`🧩 ${id}: ${tog.classList.contains('on')?'有効':'無効'}にしました`);
     };
   });
-
   // Settings toggle
   el.querySelectorAll('[data-plugin-cfg]').forEach(btn => {
-    btn.onclick = () => {
-      const cfg = $('pcfg-'+btn.dataset.pluginCfg);
-      if (cfg) cfg.classList.toggle('open');
-    };
+    btn.onclick = () => { const c=$('pcfg-'+btn.dataset.pluginCfg); if(c)c.classList.toggle('open'); };
   });
-
   // Plugin settings toggle switches
-  el.querySelectorAll('[data-ps-key][id^="ptog-"],.toggle-track[data-ps-key]').forEach(tog => {
-    if (!tog.dataset.psKey) return;
+  el.querySelectorAll('.plugin-settings .toggle-track[data-ps-key]').forEach(tog => {
     tog.onclick = () => tog.classList.toggle('on');
   });
-
   // Save plugin settings
   el.querySelectorAll('[data-plugin-save]').forEach(btn => {
     btn.onclick = async () => {
       const id = btn.dataset.pluginSave;
-      const cfg = $('pcfg-'+id);
-      const userSettings = {};
+      const cfg = $('pcfg-'+id); if(!cfg) return;
+      const us = {};
       cfg.querySelectorAll('[data-ps-key]').forEach(el => {
-        const key = el.dataset.psKey;
-        if (el.tagName === 'INPUT') userSettings[key] = el.value;
-        else userSettings[key] = el.classList.contains('on'); // toggle
+        us[el.dataset.psKey] = el.tagName==='INPUT' ? el.value : el.classList.contains('on');
       });
-      await window.shark.savePluginSettings(id, userSettings);
-      const p = pluginList.find(x=>x.id===id);
-      if (p) p.userSettings = userSettings;
+      await window.shark.savePluginSettings(id, us);
+      const p = pluginList.find(x=>x.id===id); if(p) p.userSettings=us;
       toast(`🧩 ${id}: 設定を保存しました`);
     };
   });
-
+  // Background.js launch
+  el.querySelectorAll('[data-plugin-bg]').forEach(btn => {
+    btn.onclick = async () => {
+      const r = await window.shark.pluginRunBackground(btn.dataset.pluginBg);
+      toast(r.ok ? `▶ background起動しました` : `失敗: ${r.reason||''}`);
+    };
+  });
+  // File override
+  el.querySelectorAll('[data-plugin-override]').forEach(btn => {
+    btn.onclick = async () => {
+      if (!confirm('Sharkのファイルを上書きします。バックアップが自動作成されます。続けますか？')) return;
+      const r = await window.shark.pluginInstallOverride(btn.dataset.pluginOverride);
+      toast(r.ok ? '🔧 ファイルを適用しました（再起動して反映）' : `失敗: ${r.reason||''}`);
+    };
+  });
+  el.querySelectorAll('[data-plugin-unoverride]').forEach(btn => {
+    btn.onclick = async () => {
+      const r = await window.shark.pluginUninstallOverride(btn.dataset.pluginUnoverride);
+      toast(r.ok ? '↩ 元のファイルに戻しました（再起動して反映）' : '失敗');
+    };
+  });
   // GitHub links
   el.querySelectorAll('[data-href]').forEach(a => {
     a.onclick = e => { e.preventDefault(); go(a.dataset.href); };

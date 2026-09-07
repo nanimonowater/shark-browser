@@ -91,3 +91,65 @@ const id = window.sharkPlugin.id;
 2. `shark-browser/plugins/` に置く
 3. Shark Browserを再起動
 4. 設定 → プラグイン でON/OFFできます
+
+---
+
+## 高度な機能
+
+### ファイル上書き（overrides）
+
+manifest.jsonに `overrides` を追加すると、Sharkのソースファイルを上書きできます。
+元のファイルは自動でバックアップされ、「元に戻す」ボタンで復元できます。
+
+```json
+{
+  "name": "My Override Plugin",
+  "id": "my-override",
+  "overrides": {
+    "my-index.html": "src/renderer/index.html"
+  }
+}
+```
+
+### Background.js（常駐スクリプト）
+
+`background.js` を置くと、mainプロセスで常駐実行できます。
+ページに関係なく動作し、Node.jsのAPIにアクセスできます。
+
+```javascript
+// background.js
+// shark オブジェクトが渡されます
+shark.log('background started!');
+
+// 定期実行
+setInterval(() => {
+  shark.sendToRenderer('tick', { time: Date.now() });
+}, 5000);
+
+// rendererからのメッセージを受信
+shark._onMessage = (msg) => {
+  shark.log('received:', msg);
+  return 'ok';
+};
+```
+
+content.js側でrendererからbackgroundにメッセージを送る:
+```javascript
+// content.js内では使えない（webview内のため）
+// renderer側（index.html）でのみ使用可能
+const result = await window.shark.pluginBgMessage('my-plugin-id', { hello: 'world' });
+```
+
+### ZIPでの配布方法
+
+プラグインフォルダをZIPに圧縮してGitHubのReleasesに配布できます。
+ユーザーは「ZIPからインストール」ボタンで簡単にインストールできます。
+
+```
+my-plugin.zip
+└── my-plugin/
+    ├── manifest.json
+    ├── content.js
+    └── content.css
+```
+

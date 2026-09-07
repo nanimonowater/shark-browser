@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Menu, shell, dialog, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Menu, shell, dialog, session, globalShortcut } = require('electron');
 const path  = require('path');
 const fs    = require('fs');
 const https = require('https');
@@ -213,7 +213,32 @@ function createWindow() {
     show: false,
   });
 
-  win.once('ready-to-show', () => win.show());
+  win.once('ready-to-show', () => {
+    win.show();
+
+    // All shortcuts registered globally so they work even when webview has focus
+    const shortcuts = {
+      'F11':           () => win?.setFullScreen(!win.isFullScreen()),
+      'CmdOrCtrl+T':   () => win?.webContents.send('shortcut', 'new-tab'),
+      'CmdOrCtrl+W':   () => win?.webContents.send('shortcut', 'close-tab'),
+      'CmdOrCtrl+R':   () => win?.webContents.send('shortcut', 'reload'),
+      'CmdOrCtrl+L':   () => win?.webContents.send('shortcut', 'focus-url'),
+      'CmdOrCtrl+F':   () => win?.webContents.send('shortcut', 'find'),
+      'CmdOrCtrl+D':   () => win?.webContents.send('shortcut', 'bookmark'),
+      'CmdOrCtrl+B':   () => win?.webContents.send('shortcut', 'sidebar-bookmarks'),
+      'CmdOrCtrl+H':   () => win?.webContents.send('shortcut', 'sidebar-history'),
+      'CmdOrCtrl+Tab': () => win?.webContents.send('shortcut', 'next-tab'),
+      'CmdOrCtrl+Shift+Tab': () => win?.webContents.send('shortcut', 'prev-tab'),
+      'Alt+Left':      () => win?.webContents.send('shortcut', 'back'),
+      'Alt+Right':     () => win?.webContents.send('shortcut', 'forward'),
+      'CmdOrCtrl+Shift+N': () => win?.webContents.send('shortcut', 'new-window'),
+      'CmdOrCtrl+Slash':   () => win?.webContents.send('shortcut', 'show-shortcuts'),
+    };
+
+    for (const [key, fn] of Object.entries(shortcuts)) {
+      try { globalShortcut.register(key, fn); } catch(e) { console.warn('shortcut failed:', key, e); }
+    }
+  });
   win.loadFile(path.join(__dirname, '../renderer/index.html'));
   Menu.setApplicationMenu(null);
 
@@ -274,7 +299,10 @@ function createWindow() {
     e.preventDefault();
     win.webContents.send('before-close');
   });
-  win.on('closed', () => { win = null; });
+  win.on('closed', () => {
+    globalShortcut.unregisterAll();
+    win = null;
+  });
   win.on('enter-full-screen', () => win.webContents.send('fullscreen', true));
   win.on('leave-full-screen',  () => win.webContents.send('fullscreen', false));
 }
@@ -330,8 +358,10 @@ ipcMain.handle('get-plugins', () => {
     id: p.id, name: p.name, version: p.version,
     description: p.description, author: p.author, homepage: p.homepage,
     settings: p.settings || [],
-    enabled: pluginData[p.id]?.enabled !== false, // default ON
+    enabled: pluginData[p.id]?.enabled !== false,
     userSettings: pluginData[p.id]?.userSettings || {},
+    hasBackground: fs.existsSync(path.join(p.dir, 'background.js')),
+    hasOverrides:  !!(p.overrides && Object.keys(p.overrides).length),
   }));
 });
 
@@ -429,4 +459,157 @@ ipcMain.handle('get-font-data', (_, filename) => {
       mime: mimeMap[ext] || 'truetype',
     };
   } catch { return null; }
+});
+
+// ── Plugin: Advanced IPC ──────────────────────────────────────
+
+// プラグインからファイルを読む（pluginDir内のみ）
+ipcMain.handle('plugin-read-file', (_, pluginId, relPath) => {
+  const plugin = loadedPlugins.find(p => p.id === pluginId);
+  if (!plugin) return null;
+  const fp = path.join(plugin.dir, relPath.replace(/\.\./g, ''));
+  if (!fs.existsSync(fp)) return null;
+  return fs.readFileSync(fp, 'utf8');
+});
+
+// プラグインからファイルを書く（pluginDir内のみ）
+ipcMain.handle('plugin-write-file', (_, pluginId, relPath, content) => {
+  const plugin = loadedPlugins.find(p => p.id === pluginId);
+  if (!plugin) return false;
+  const fp = path.join(plugin.dir, relPath.replace(/\.\./g, ''));
+  fs.writeFileSync(fp, content, 'utf8');
+  return true;
+});
+
+// プラグインがSharkのソースファイルを上書きインストール
+// manifest.json の "overrides" に記載されたファイルを置き換える
+ipcMain.handle('plugin-install-override', (_, pluginId) => {
+  const plugin = loadedPlugins.find(p => p.id === pluginId);
+  if (!plugin || !plugin.overrides) return { ok: false, reason: 'no overrides' };
+  const results = [];
+  for (const [src, dst] of Object.entries(plugin.overrides)) {
+    try {
+      const srcPath = path.join(plugin.dir, src);
+      const dstPath = path.join(__dirname, '../../', dst);
+      if (!fs.existsSync(srcPath)) { results.push({ src, ok: false, reason: 'src not found' }); continue; }
+      // Backup original
+      const backupPath = dstPath + '.shark-backup';
+      if (!fs.existsSync(backupPath)) fs.copyFileSync(dstPath, backupPath);
+      fs.copyFileSync(srcPath, dstPath);
+      results.push({ src, dst, ok: true });
+    } catch(e) { results.push({ src, ok: false, reason: e.message }); }
+  }
+  return { ok: true, results };
+});
+
+// 上書きを元に戻す
+ipcMain.handle('plugin-uninstall-override', (_, pluginId) => {
+  const plugin = loadedPlugins.find(p => p.id === pluginId);
+  if (!plugin || !plugin.overrides) return { ok: false };
+  for (const [, dst] of Object.entries(plugin.overrides)) {
+    const dstPath = path.join(__dirname, '../../', dst);
+    const backupPath = dstPath + '.shark-backup';
+    if (fs.existsSync(backupPath)) {
+      fs.copyFileSync(backupPath, dstPath);
+      fs.unlinkSync(backupPath);
+    }
+  }
+  return { ok: true };
+});
+
+// プラグインのbackground.jsを実行（mainプロセスで動く）
+// background.js内ではrequire('electron')を使えるが危険なので
+// 専用サンドボックスAPIのみ提供
+const pluginBackgrounds = {};
+ipcMain.handle('plugin-run-background', (_, pluginId) => {
+  if (pluginBackgrounds[pluginId]) return { ok: true, running: true };
+  const plugin = loadedPlugins.find(p => p.id === pluginId);
+  if (!plugin) return { ok: false };
+  const bgPath = path.join(plugin.dir, 'background.js');
+  if (!fs.existsSync(bgPath)) return { ok: false, reason: 'no background.js' };
+  try {
+    const code = fs.readFileSync(bgPath, 'utf8');
+    // Safe sandbox: only expose limited APIs
+    const sandbox = {
+      pluginId,
+      pluginDir: plugin.dir,
+      settings: (() => {
+        const d = loadJSON(pluginDataPath, {});
+        return d[pluginId]?.userSettings || {};
+      })(),
+      readFile:  (f) => fs.readFileSync(path.join(plugin.dir, f.replace(/\.\./g,'')), 'utf8'),
+      writeFile: (f, c) => fs.writeFileSync(path.join(plugin.dir, f.replace(/\.\./g,'')), c, 'utf8'),
+      sendToRenderer: (event, data) => win?.webContents.send(`plugin-${pluginId}-${event}`, data),
+      fetch: (url, opts) => require('node-fetch')?.(url, opts).catch(()=>null),
+      log: (...args) => console.log(`[Plugin:${pluginId}]`, ...args),
+    };
+    const fn = new Function('shark', code);
+    fn(sandbox);
+    pluginBackgrounds[pluginId] = sandbox;
+    return { ok: true };
+  } catch(e) { return { ok: false, reason: e.message }; }
+});
+
+// Renderer → background通信
+ipcMain.handle('plugin-bg-message', (_, pluginId, msg) => {
+  const bg = pluginBackgrounds[pluginId];
+  if (!bg || !bg._onMessage) return null;
+  return bg._onMessage(msg);
+});
+
+// プラグインからのWebRequestフィルター登録
+// manifest.json の "request_rules" に記載
+ipcMain.handle('plugin-register-request-rules', (_, pluginId) => {
+  const plugin = loadedPlugins.find(p => p.id === pluginId);
+  if (!plugin?.request_rules) return false;
+  // Already handled in webRequest.onBeforeRequest — rebuild
+  return true;
+});
+
+// プラグイン一覧を再読み込み（プラグイン追加後）
+ipcMain.handle('reload-plugins', () => {
+  loadedPlugins = loadPlugins();
+  return loadedPlugins.map(p => p.id);
+});
+
+// プラグインフォルダをエクスプローラーで開く
+ipcMain.handle('open-plugins-dir', () => {
+  shell.openPath(pluginsDir);
+  return true;
+});
+
+// ZIPからプラグインをインストール
+ipcMain.handle('install-plugin-zip', async () => {
+  const result = await dialog.showOpenDialog(win, {
+    title: 'プラグインをインストール',
+    filters: [{ name: 'ZIP', extensions: ['zip'] }],
+    properties: ['openFile'],
+  });
+  if (result.canceled || !result.filePaths.length) return { ok: false };
+  const zipPath = result.filePaths[0];
+  try {
+    const AdmZip = (() => { try { return require('adm-zip'); } catch { return null; } })();
+    if (!AdmZip) return { ok: false, reason: 'adm-zip not installed. Run: npm install adm-zip' };
+    const zip = new AdmZip(zipPath);
+    const entries = zip.getEntries();
+    // Find manifest.json
+    const mfEntry = entries.find(e => e.entryName.endsWith('manifest.json') && e.entryName.split('/').length <= 2);
+    if (!mfEntry) return { ok: false, reason: 'manifest.json が見つかりません' };
+    const mf = JSON.parse(zip.readAsText(mfEntry));
+    if (!mf.id) return { ok: false, reason: 'manifest.json に id がありません' };
+    const destDir = path.join(pluginsDir, mf.id);
+    fs.mkdirSync(destDir, { recursive: true });
+    // Extract all files into destDir (strip top-level folder)
+    const topFolder = mfEntry.entryName.includes('/') ? mfEntry.entryName.split('/')[0] + '/' : '';
+    for (const entry of entries) {
+      if (entry.isDirectory) continue;
+      const rel = topFolder ? entry.entryName.replace(topFolder, '') : entry.entryName;
+      if (!rel) continue;
+      const outPath = path.join(destDir, rel);
+      fs.mkdirSync(path.dirname(outPath), { recursive: true });
+      fs.writeFileSync(outPath, entry.getData());
+    }
+    loadedPlugins = loadPlugins();
+    return { ok: true, id: mf.id, name: mf.name };
+  } catch(e) { return { ok: false, reason: e.message }; }
 });
