@@ -1,0 +1,30 @@
+{
+  "name": "Hello World",
+  "id": "example-hello",
+  "version": "1.0.0",
+  "description": "プラグイン開発のサンプルです。ページ右下にバッジを表示します。",
+  "author": "Shark Browser Team",
+  "homepage": "https://github.com/your-repo/shark-browser",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "settings": [
+    {
+      "key": "enabled",
+      "label": "バッジを表示",
+      "type": "toggle",
+      "default": true
+    },
+    {
+      "key": "text",
+      "label": "バッジのテキスト",
+      "type": "text",
+      "default": "🦈 Shark"
+    }
+  ]
+}

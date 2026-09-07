@@ -1,0 +1,20 @@
+/* フォーカスモード: 広告・サイドバーを非表示 */
+aside, [class*="sidebar"], [class*="side-bar"],
+[class*="widget"], [id*="sidebar"], [id*="side-bar"],
+[class*="banner"], [class*="advertisement"], [class*="ad-"],
+[id*="ad-"], [class*="ads"], [id*="ads"],
+[class*="social"], [class*="share-buttons"],
+[class*="related"], [class*="recommend"],
+[class*="popup"], [class*="overlay"]:not(video),
+iframe[src*="doubleclick"], iframe[src*="adservice"],
+iframe[src*="googlesyndication"] {
+  display: none !important;
+}
+
+/* コンテンツを中央・広めに */
+article, [class*="article"], [class*="content"],
+[class*="post-body"], [role="main"] {
+  max-width: 780px !important;
+  margin: 0 auto !important;
+  padding: 24px !important;
+}

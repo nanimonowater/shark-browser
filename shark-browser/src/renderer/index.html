@@ -1,0 +1,1957 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<title>Shark</title>
+<style>
+:root {
+  --bg:      #0f0f1a;
+  --surface: #1a1a2e;
+  --raised:  #16213e;
+  --hover:   #1f2b4a;
+  --active:  #0f3460;
+  --accent:  #7c6af7;
+  --accentH: #9580ff;
+  --glow:    rgba(124,106,247,.22);
+  --txt:     #e8e8f0;
+  --txt2:    #9090b0;
+  --txt3:    #5a5a7a;
+  --border:  rgba(124,106,247,.15);
+  --borderS: rgba(124,106,247,.35);
+  --tabBg:   #12122a;
+  --sb:      #2a2a4a;
+}
+[data-theme=light]{
+  --bg:#f0f0fa;--surface:#fff;--raised:#f5f5ff;--hover:#eaeaff;--active:#dddaff;
+  --accent:#6152e8;--accentH:#7c6af7;--glow:rgba(97,82,232,.18);
+  --txt:#1a1a2e;--txt2:#4a4a6a;--txt3:#8888aa;
+  --border:rgba(97,82,232,.15);--borderS:rgba(97,82,232,.35);--tabBg:#e8e8f5;--sb:#c0c0e0;
+}
+[data-theme=amoled]{
+  --bg:#000;--surface:#0a0a0a;--raised:#111;--hover:#1a1a1a;--active:#222233;
+  --accent:#a78bfa;--accentH:#c4b5fd;--glow:rgba(167,139,250,.28);
+  --txt:#f0f0f0;--txt2:#888;--txt3:#444;
+  --border:rgba(167,139,250,.12);--borderS:rgba(167,139,250,.28);--tabBg:#050505;--sb:#222;
+}
+[data-theme=forest]{
+  --bg:#0d1f0d;--surface:#142114;--raised:#1a2e1a;--hover:#1f3a1f;--active:#254825;
+  --accent:#4ade80;--accentH:#6ee7a0;--glow:rgba(74,222,128,.22);
+  --txt:#e0f0e0;--txt2:#80a880;--txt3:#4a6a4a;
+  --border:rgba(74,222,128,.15);--borderS:rgba(74,222,128,.35);--tabBg:#0a170a;--sb:#2a4a2a;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-thumb{background:var(--sb);border-radius:3px;}
+::-webkit-scrollbar-track{background:transparent;}
+
+body{
+  font-family: var(--font-family, -apple-system, 'Segoe UI', 'Noto Sans JP', sans-serif);
+  background:var(--bg);color:var(--txt);
+  height:100vh;display:flex;flex-direction:column;overflow:hidden;
+  user-select:none;
+}
+
+/* ── Titlebar ── */
+#titlebar{
+  height:38px;background:var(--bg);
+  display:flex;align-items:center;
+  flex-shrink:0;border-bottom:1px solid var(--border);
+  -webkit-app-region: drag; /* entire bar is draggable */
+}
+#tbar-logo{
+  display:flex;align-items:center;gap:6px;
+  padding:0 14px;font-size:13px;font-weight:800;
+  color:var(--accent);letter-spacing:.04em;
+}
+#tbar-logo svg{width:20px;height:20px;}
+#win-controls{
+  display:flex;margin-left:auto;
+  -webkit-app-region: no-drag; /* button area is NOT draggable */
+}
+.wbtn{
+  width:46px;height:38px;border:none;background:transparent;
+  color:var(--txt2);cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .15s,color .15s;
+  -webkit-app-region: no-drag;
+}
+.wbtn:hover{background:var(--hover);color:var(--txt);}
+#wbtn-close:hover{background:#c42b2b;color:#fff;}
+
+/* ── Tab bar ── */
+#tabbar{
+  height:38px;background:var(--tabBg);
+  display:flex;align-items:flex-end;
+  padding:0 4px;overflow-x:auto;overflow-y:hidden;
+  flex-shrink:0;gap:2px;border-bottom:1px solid var(--border);
+}
+#tabbar::-webkit-scrollbar{height:3px;}
+.tab{
+  display:flex;align-items:center;gap:6px;
+  padding:0 10px;height:32px;
+  min-width:130px;max-width:210px;
+  background:transparent;border-radius:7px 7px 0 0;
+  cursor:pointer;transition:background .12s;
+  flex-shrink:0;border:1px solid transparent;border-bottom:none;
+}
+.tab:hover{background:var(--hover);}
+.tab.active{background:var(--surface);border-color:var(--border);border-bottom-color:var(--surface);}
+.tab-fav{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.tab-title{font-size:12px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;}
+.tab.active .tab-title{color:var(--txt);}
+.tab-spin{width:14px;height:14px;border:2px solid var(--borderS);border-top-color:var(--accent);
+  border-radius:50%;animation:spin .7s linear infinite;flex-shrink:0;}
+@keyframes spin{to{transform:rotate(360deg);}}
+.tab-x{
+  width:18px;height:18px;border:none;background:transparent;
+  color:var(--txt3);cursor:pointer;border-radius:4px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:15px;flex-shrink:0;transition:background .1s,color .1s;
+}
+.tab-x:hover{background:rgba(255,80,80,.2);color:#ff6464;}
+#btn-newtab{
+  width:30px;height:30px;border:none;background:transparent;
+  color:var(--txt2);cursor:pointer;border-radius:6px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;flex-shrink:0;align-self:center;
+  transition:background .12s,color .12s;margin-left:2px;
+}
+#btn-newtab:hover{background:var(--hover);color:var(--accent);}
+
+/* ── Toolbar ── */
+#toolbar{
+  height:46px;background:var(--surface);
+  display:flex;align-items:center;gap:5px;
+  padding:0 8px;flex-shrink:0;border-bottom:1px solid var(--border);
+}
+.tbtn{
+  width:32px;height:32px;border:none;background:transparent;
+  color:var(--txt2);cursor:pointer;border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .12s,color .12s;flex-shrink:0;
+}
+.tbtn:hover{background:var(--hover);color:var(--txt);}
+.tbtn:disabled{opacity:.3;pointer-events:none;}
+
+/* URL bar */
+#urlwrap{flex:1;position:relative;display:flex;align-items:center;}
+#urlbar{
+  width:100%;height:32px;
+  background:var(--raised);border:1px solid var(--border);
+  border-radius:16px;color:var(--txt);font-size:13px;
+  padding:0 34px 0 13px;outline:none;
+  transition:border-color .18s,box-shadow .18s;
+  user-select:text;
+}
+#urlbar:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
+#btn-bm{
+  position:absolute;right:6px;width:24px;height:24px;
+  border:none;background:transparent;cursor:pointer;
+  color:var(--txt3);border-radius:50%;
+  display:flex;align-items:center;justify-content:center;
+  transition:color .12s;
+}
+#btn-bm:hover{color:var(--accent);}
+#btn-bm.on{color:#f59e0b;}
+
+/* Autocomplete */
+#ac{
+  position:absolute;top:calc(100% + 4px);left:0;right:0;
+  background:var(--raised);border:1px solid var(--borderS);
+  border-radius:10px;overflow:hidden;z-index:9000;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);display:none;
+}
+.ac-item{
+  display:flex;align-items:center;gap:9px;
+  padding:9px 13px;cursor:pointer;transition:background .1s;
+}
+.ac-item:hover,.ac-item.sel{background:var(--hover);}
+.ac-item img{width:14px;height:14px;border-radius:2px;}
+.ac-txt{font-size:13px;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ac-sub{font-size:11px;color:var(--txt3);}
+.ac-tag{font-size:10px;padding:2px 5px;border-radius:4px;background:var(--active);color:var(--accent);flex-shrink:0;}
+
+/* ── Content ── */
+#content{flex:1;display:flex;overflow:hidden;position:relative;}
+
+/* ── Sidebar ── */
+#sidebar{
+  width:290px;background:var(--surface);border-right:1px solid var(--border);
+  display:flex;flex-direction:column;flex-shrink:0;
+  position:absolute;top:0;left:0;bottom:0;z-index:200;
+  transform:translateX(-290px);transition:transform .22s ease;
+  -webkit-app-region:no-drag;
+}
+#sidebar.open{transform:translateX(0);box-shadow:4px 0 20px rgba(0,0,0,.4);}
+#sb-overlay{
+  position:absolute;inset:0;background:rgba(0,0,0,.35);
+  z-index:199;display:none;
+}
+#sb-overlay.show{display:block;}
+#sb-tabs{display:flex;border-bottom:1px solid var(--border);flex-shrink:0;}
+.sbtab{
+  flex:1;padding:11px 6px;border:none;background:transparent;
+  color:var(--txt3);cursor:pointer;font-size:11px;font-weight:600;
+  display:flex;align-items:center;justify-content:center;gap:4px;
+  border-bottom:2px solid transparent;margin-bottom:-1px;
+  transition:color .12s;
+}
+.sbtab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.sbtab:hover:not(.active){color:var(--txt);}
+.sb-panel{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.sb-panel.active{display:flex;}
+.sb-search{padding:8px;flex-shrink:0;}
+.sb-search input{
+  width:100%;background:var(--raised);border:1px solid var(--border);
+  border-radius:7px;color:var(--txt);font-size:12px;
+  padding:6px 10px;outline:none;transition:border-color .15s;user-select:text;
+}
+.sb-search input:focus{border-color:var(--accent);}
+.sb-list{flex:1;overflow-y:auto;padding:3px 7px;}
+.sb-item{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 9px;border-radius:7px;cursor:pointer;
+  transition:background .1s;
+}
+.sb-item:hover{background:var(--hover);}
+.sb-item img{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.sb-item-txt{flex:1;overflow:hidden;}
+.sb-item-title{font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-item-url{font-size:10px;color:var(--txt3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.sb-del{
+  width:18px;height:18px;border:none;background:transparent;
+  color:var(--txt3);cursor:pointer;border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  opacity:0;transition:opacity .12s,background .12s;flex-shrink:0;
+}
+.sb-item:hover .sb-del{opacity:1;}
+.sb-del:hover{background:rgba(255,80,80,.2);color:#ff6464;}
+.sb-empty{text-align:center;padding:36px 16px;color:var(--txt3);font-size:13px;}
+.hist-date{font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;
+  letter-spacing:.08em;padding:8px 9px 3px;}
+.sb-footer{padding:7px;flex-shrink:0;border-top:1px solid var(--border);}
+.sb-btn{
+  width:100%;padding:7px;background:var(--active);
+  border:1px solid var(--borderS);border-radius:7px;
+  color:var(--accent);font-size:12px;cursor:pointer;transition:background .12s;
+}
+.sb-btn:hover{background:var(--accent);color:#fff;}
+.sb-btn.danger{color:#ff6464;border-color:rgba(255,100,100,.3);}
+.sb-btn.danger:hover{background:#e53e3e;color:#fff;}
+
+/* Settings */
+#panel-settings{overflow:hidden;}
+#settings-scroll{
+  overflow-y:auto;
+  flex:1;
+  padding:12px;
+  height:0; /* force flex child to respect overflow-y */
+}
+.set-label{
+  font-size:10px;font-weight:700;color:var(--txt3);text-transform:uppercase;
+  letter-spacing:.09em;margin-bottom:7px;margin-top:14px;
+}
+.set-label:first-child{margin-top:0;}
+.set-item{margin-bottom:8px;}
+.set-item label{display:block;font-size:12px;color:var(--txt2);margin-bottom:3px;}
+.set-item input,
+.set-item select{
+  width:100%;
+  background:var(--raised);
+  border:1px solid var(--border);
+  border-radius:7px;
+  color:var(--txt);
+  font-size:12px;
+  padding:6px 10px;
+  outline:none;
+  cursor:text;
+  pointer-events:all;
+  -webkit-app-region:no-drag;
+  user-select:text;
+  transition:border-color .15s;
+}
+.set-item select{cursor:pointer;}
+.set-item input:focus,.set-item select:focus{border-color:var(--accent);}
+
+/* Make sure ALL sidebar interactive elements ignore drag region */
+#sidebar input,
+#sidebar select,
+#sidebar button,
+#sidebar textarea {
+  -webkit-app-region: no-drag;
+  pointer-events: all;
+}
+.theme-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-bottom:10px;}
+.theme-btn{
+  padding:7px 6px;border:2px solid var(--border);border-radius:7px;
+  background:var(--raised);cursor:pointer;text-align:center;
+  font-size:11px;color:var(--txt2);transition:border-color .12s,color .12s;
+}
+.theme-btn:hover{border-color:var(--accent);color:var(--txt);}
+.theme-btn.active{border-color:var(--accent);color:var(--accent);}
+.theme-swatch{width:100%;height:24px;border-radius:4px;margin-bottom:4px;}
+
+/* Color editor */
+.color-grid{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.color-row{display:flex;align-items:center;justify-content:space-between;gap:6px;}
+.color-row label{font-size:11px;color:var(--txt2);flex:1;}
+.color-input-wrap{display:flex;align-items:center;gap:6px;}
+.color-input-wrap input[type=color]{
+  width:32px;height:26px;border:1px solid var(--border);
+  border-radius:5px;background:none;cursor:pointer;padding:1px;
+}
+.color-hex{font-size:10px;color:var(--txt3);font-family:monospace;width:52px;}
+
+/* Quicklink editor */
+.ql-edit-item{
+  display:flex;align-items:center;gap:5px;
+  padding:5px 0;border-bottom:1px solid var(--border);
+}
+.ql-edit-item input{
+  background:var(--raised);border:1px solid var(--border);border-radius:5px;
+  color:var(--txt);font-size:11px;padding:4px 7px;outline:none;
+  transition:border-color .15s;user-select:text;
+  -webkit-app-region:no-drag;
+  pointer-events:all;
+  cursor:text;
+}
+.ql-edit-item input:focus{border-color:var(--accent);}
+.ql-edit-name{width:72px;flex-shrink:0;}
+.ql-edit-url{flex:1;}
+.ql-edit-emoji{width:38px;flex-shrink:0;text-align:center;}
+.ql-edit-color{
+  width:30px;height:26px;flex-shrink:0;
+  border:1px solid var(--border);border-radius:5px;
+  padding:1px;cursor:pointer;
+  -webkit-app-region:no-drag;
+  pointer-events:all;
+}
+.ql-del{
+  width:22px;height:22px;border:none;background:transparent;
+  color:var(--txt3);cursor:pointer;border-radius:4px;flex-shrink:0;
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+  -webkit-app-region:no-drag;
+  pointer-events:all;
+}
+.ql-del:hover{background:rgba(255,80,80,.2);color:#ff6464;}
+
+/* ── WebViews ── */
+#webviews{flex:1;position:relative;overflow:hidden;}
+webview{position:absolute;inset:0;display:none;width:100%;height:100%;}
+webview.active{display:flex;}
+
+/* ── New Tab Page ── */
+#newtab{
+  position:absolute;inset:0;background:var(--bg);
+  display:none;flex-direction:column;
+  align-items:center;justify-content:center;
+  padding:40px;overflow-y:auto;
+}
+#newtab.active{display:flex;}
+.nt-logo{font-size:30px;font-weight:900;color:var(--accent);letter-spacing:-.02em;margin-bottom:6px;}
+.nt-logo span{color:var(--txt2);font-weight:300;}
+.nt-sub{font-size:13px;color:var(--txt3);margin-bottom:22px;}
+.nt-search{width:100%;max-width:540px;position:relative;margin-bottom:26px;}
+.nt-search input{
+  width:100%;height:46px;background:var(--surface);
+  border:2px solid var(--border);border-radius:23px;
+  color:var(--txt);font-size:15px;padding:0 48px 0 18px;
+  outline:none;transition:border-color .18s,box-shadow .18s;user-select:text;
+}
+.nt-search input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--glow);}
+.nt-search button{
+  position:absolute;right:7px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;background:var(--accent);border:none;
+  border-radius:50%;color:#fff;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .12s;
+}
+.nt-search button:hover{background:var(--accentH);}
+.ql-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;
+  width:100%;max-width:540px;margin-bottom:28px;}
+.ql{
+  display:flex;flex-direction:column;align-items:center;gap:5px;
+  padding:12px 6px;background:var(--surface);border:1px solid var(--border);
+  border-radius:10px;cursor:pointer;font-size:11px;color:var(--txt2);
+  transition:background .12s,border-color .12s;
+}
+.ql:hover{background:var(--hover);border-color:var(--borderS);color:var(--txt);}
+.ql-icon{width:34px;height:34px;border-radius:9px;
+  display:flex;align-items:center;justify-content:center;font-size:17px;}
+.nt-bm-section{width:100%;max-width:540px;}
+.nt-bm-section h3{font-size:11px;color:var(--txt3);font-weight:700;
+  text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px;}
+.nt-bm-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:7px;}
+.nt-bm{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 9px;background:var(--surface);border:1px solid var(--border);
+  border-radius:7px;cursor:pointer;transition:background .1s;overflow:hidden;
+}
+.nt-bm:hover{background:var(--hover);}
+.nt-bm img{width:14px;height:14px;border-radius:2px;flex-shrink:0;}
+.nt-bm span{font-size:11px;color:var(--txt2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+/* ── Findbar ── */
+#findbar{
+  position:absolute;top:0;right:12px;
+  background:var(--raised);border:1px solid var(--borderS);
+  border-top:none;border-radius:0 0 9px 9px;
+  padding:7px;display:none;align-items:center;gap:5px;
+  z-index:100;box-shadow:0 4px 14px rgba(0,0,0,.3);
+}
+#findbar.show{display:flex;}
+#find-input{
+  width:190px;background:var(--bg);border:1px solid var(--border);
+  border-radius:5px;color:var(--txt);font-size:13px;
+  padding:4px 9px;outline:none;user-select:text;
+}
+#find-input:focus{border-color:var(--accent);}
+#find-count{font-size:11px;color:var(--txt3);min-width:50px;}
+.fbtn{
+  width:24px;height:24px;border:none;background:transparent;
+  color:var(--txt2);cursor:pointer;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  transition:background .1s;
+}
+.fbtn:hover{background:var(--hover);}
+
+/* ── Toast ── */
+#toast{
+  position:fixed;bottom:28px;left:50%;
+  transform:translateX(-50%) translateY(60px);
+  background:var(--raised);border:1px solid var(--borderS);
+  border-radius:9px;padding:9px 16px;font-size:13px;
+  box-shadow:0 4px 20px rgba(0,0,0,.4);z-index:9999;
+  transition:transform .22s ease;pointer-events:none;
+}
+#toast.show{transform:translateX(-50%) translateY(0);}
+
+/* ── Plugin items ── */
+.plugin-item{
+  padding:10px;border-bottom:1px solid var(--border);
+}
+.plugin-header{display:flex;align-items:center;gap:8px;margin-bottom:4px;}
+.plugin-name{font-size:13px;font-weight:600;color:var(--txt);flex:1;}
+.plugin-ver{font-size:10px;color:var(--txt3);}
+.plugin-desc{font-size:11px;color:var(--txt2);margin-bottom:6px;line-height:1.5;}
+.plugin-author{font-size:10px;color:var(--txt3);}
+.plugin-settings{margin-top:8px;display:none;border-top:1px solid var(--border);padding-top:8px;}
+.plugin-settings.open{display:block;}
+.plugin-setting-row{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.plugin-setting-row label{font-size:11px;color:var(--txt2);flex:1;}
+.plugin-setting-row input[type=text]{
+  background:var(--raised);border:1px solid var(--border);border-radius:5px;
+  color:var(--txt);font-size:11px;padding:3px 7px;outline:none;width:120px;
+  -webkit-app-region:no-drag;user-select:text;
+}
+.plugin-actions{display:flex;gap:5px;margin-top:6px;}
+.plugin-btn{
+  font-size:11px;padding:3px 8px;border:1px solid var(--border);
+  border-radius:5px;background:transparent;color:var(--txt2);cursor:pointer;
+  transition:background .1s;-webkit-app-region:no-drag;
+}
+.plugin-btn:hover{background:var(--hover);color:var(--txt);}
+.plugin-btn.primary{border-color:var(--accent);color:var(--accent);}
+.plugin-btn.primary:hover{background:var(--accent);color:#fff;}
+
+/* ── Context menu ── */
+#ctx-menu{
+  position:fixed;display:none;z-index:9990;
+  background:var(--raised);border:1px solid var(--borderS);
+  border-radius:10px;padding:4px;min-width:180px;
+  box-shadow:0 8px 28px rgba(0,0,0,.5);
+  -webkit-app-region:no-drag;
+}
+.ctx-item{
+  padding:8px 14px;font-size:13px;color:var(--txt);
+  border-radius:6px;cursor:pointer;transition:background .1s;
+  -webkit-app-region:no-drag;
+}
+.ctx-item:hover{background:var(--hover);}
+.ctx-item.ctx-danger{color:#ff6464;}
+.ctx-sep{height:1px;background:var(--border);margin:3px 0;}
+
+/* ── Toggle switch ── */
+.toggle-wrap{flex-shrink:0;}
+.toggle-track{
+  width:36px;height:20px;border-radius:10px;
+  background:var(--hover);border:1px solid var(--border);
+  position:relative;cursor:pointer;transition:background .2s;
+  -webkit-app-region:no-drag;
+}
+.toggle-track.on{background:var(--accent);border-color:var(--accent);}
+.toggle-thumb{
+  width:16px;height:16px;border-radius:50%;
+  background:#fff;position:absolute;top:1px;left:1px;
+  transition:left .2s;box-shadow:0 1px 4px rgba(0,0,0,.3);
+}
+.toggle-track.on .toggle-thumb{left:17px;}
+
+/* ── Download items ── */
+.dl-item{
+  padding:9px 10px;border-bottom:1px solid var(--border);
+}
+.dl-item-name{font-size:12px;color:var(--txt);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px;}
+.dl-progress{height:3px;background:var(--hover);border-radius:2px;margin-bottom:5px;overflow:hidden;}
+.dl-progress-bar{height:100%;background:var(--accent);border-radius:2px;transition:width .2s;}
+.dl-meta{font-size:10px;color:var(--txt3);display:flex;gap:8px;align-items:center;}
+.dl-status{font-size:10px;padding:1px 6px;border-radius:4px;background:var(--active);color:var(--accent);}
+.dl-status.done{background:rgba(74,222,128,.15);color:#4ade80;}
+.dl-status.cancelled{background:rgba(255,100,100,.15);color:#ff6464;}
+.dl-actions{display:flex;gap:5px;margin-top:5px;}
+.dl-btn{
+  font-size:11px;padding:3px 8px;border:1px solid var(--border);
+  border-radius:5px;background:transparent;color:var(--txt2);
+  cursor:pointer;transition:background .1s;
+  -webkit-app-region:no-drag;
+}
+.dl-btn:hover{background:var(--hover);color:var(--txt);}
+
+/* ── Status bar ── */
+#statusbar{
+  height:20px;background:var(--bg);border-top:1px solid var(--border);
+  display:flex;align-items:center;padding:0 10px;
+  font-size:11px;color:var(--txt3);flex-shrink:0;
+}
+#status-txt{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+</style>
+</head>
+<body>
+
+<!-- Titlebar -->
+<div id="titlebar">
+  <div id="tbar-logo">
+    <svg viewBox="0 0 24 24" fill="none">
+      <path d="M3 17 C5 17 7 14 9 10 L12 3 L13 10 C15 10 18 11 21 17 Z"
+            stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/>
+      <path d="M6 17 Q9 19.5 12 17 Q15 14.5 18 17"
+            stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/>
+    </svg>
+    Shark
+  </div>
+  <div id="win-controls">
+    <button class="wbtn" id="wbtn-min" title="最小化">
+      <svg width="12" height="1.5" viewBox="0 0 12 1.5"><rect width="12" height="1.5" rx=".75" fill="currentColor"/></svg>
+    </button>
+    <button class="wbtn" id="wbtn-max" title="最大化">
+      <svg width="11" height="11" viewBox="0 0 11 11" fill="none"><rect x=".5" y=".5" width="10" height="10" rx="1.5" stroke="currentColor"/></svg>
+    </button>
+    <button class="wbtn" id="wbtn-close" title="閉じる">
+      <svg width="11" height="11" viewBox="0 0 11 11"><line x1="1" y1="1" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="10" y1="1" x2="1" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<!-- Tabbar -->
+<div id="tabbar">
+  <button id="btn-newtab" title="新しいタブ (Ctrl+T)">+</button>
+</div>
+
+<!-- Toolbar -->
+<div id="toolbar">
+  <button class="tbtn" id="btn-sidebar" title="サイドバー">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><rect x="1" y="2" width="14" height="12" rx="2" stroke="currentColor" stroke-width="1.3"/><line x1="5" y1="2" x2="5" y2="14" stroke="currentColor" stroke-width="1.3"/></svg>
+  </button>
+  <button class="tbtn" id="btn-back" title="戻る (Alt+←)" disabled>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M10 3L5 8l5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="tbtn" id="btn-fwd" title="進む (Alt+→)" disabled>
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M6 3l5 5-5 5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="tbtn" id="btn-reload" title="更新 (Ctrl+R)">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 112.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2.5 2v3h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <button class="tbtn" id="btn-home" title="ホーム">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M2 7l6-5 6 5v7a1 1 0 01-1 1H3a1 1 0 01-1-1V7z" stroke="currentColor" stroke-width="1.3"/><path d="M6 14v-4h4v4" stroke="currentColor" stroke-width="1.3"/></svg>
+  </button>
+
+  <div id="urlwrap">
+    <input id="urlbar" type="text" placeholder="URLを入力、または検索...">
+    <button id="btn-bm" title="ブックマーク (Ctrl+D)">
+      <svg width="13" height="13" viewBox="0 0 13 13" fill="none"><path d="M2.5 2h8a1 1 0 011 1v8.5l-4.5-2.7-4.5 2.7V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="ac"></div>
+  </div>
+
+  <button class="tbtn" id="btn-find" title="ページ内検索 (Ctrl+F)">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="7" cy="7" r="4.5" stroke="currentColor" stroke-width="1.3"/><line x1="10.5" y1="10.5" x2="14" y2="14" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
+  </button>
+  <button class="tbtn" id="btn-devtools" title="開発者ツール">
+    <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M5 5L2 8l3 3M11 5l3 3-3 3M9 4l-2 8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+</div>
+
+<!-- Content -->
+<div id="content">
+  <div id="sb-overlay"></div>
+  <div id="sidebar">
+    <div id="sb-tabs">
+      <button class="sbtab active" data-p="bookmarks">★ ブックマーク</button>
+      <button class="sbtab" data-p="history">🕐 履歴</button>
+      <button class="sbtab" data-p="downloads">⬇ DL</button>
+      <button class="sbtab" data-p="plugins">🧩 拡張</button>
+      <button class="sbtab" data-p="settings">⚙ 設定</button>
+    </div>
+    <!-- Bookmarks -->
+    <div class="sb-panel active" id="panel-bookmarks">
+      <div class="sb-search"><input id="bm-search" type="text" placeholder="ブックマーク検索..."></div>
+      <div class="sb-list" id="bm-list"></div>
+    </div>
+    <!-- History -->
+    <div class="sb-panel" id="panel-history">
+      <div class="sb-search"><input id="hist-search" type="text" placeholder="履歴検索..."></div>
+      <div class="sb-list" id="hist-list"></div>
+      <div class="sb-footer"><button class="sb-btn danger" id="btn-clear-hist">すべての履歴を削除</button></div>
+    </div>
+    <!-- Plugins -->
+    <div class="sb-panel" id="panel-plugins">
+      <div class="sb-list" id="plugin-list"></div>
+      <div class="sb-footer" style="font-size:10px;color:var(--txt3);padding:8px 10px;line-height:1.6;">
+        プラグインは <code>plugins/</code> フォルダに置いてください。<br>
+        詳細: <code>plugins/PLUGIN_GUIDE.md</code>
+      </div>
+    </div>
+    <!-- Downloads -->
+    <div class="sb-panel" id="panel-downloads">
+      <div class="sb-list" id="dl-list"></div>
+      <div class="sb-footer">
+        <button class="sb-btn danger" id="btn-clear-dl">ダウンロード履歴を削除</button>
+      </div>
+    </div>
+    <!-- Settings -->
+    <div class="sb-panel" id="panel-settings">
+      <div id="settings-scroll">
+        <div class="set-label">テーマプリセット</div>
+        <div class="theme-grid">
+          <button class="theme-btn" data-theme="dark">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#0f0f1a,#7c6af7)"></div>ダーク
+          </button>
+          <button class="theme-btn" data-theme="light">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#f0f0fa,#6152e8)"></div>ライト
+          </button>
+          <button class="theme-btn" data-theme="amoled">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#000,#a78bfa)"></div>AMOLED
+          </button>
+          <button class="theme-btn" data-theme="forest">
+            <div class="theme-swatch" style="background:linear-gradient(135deg,#0d1f0d,#4ade80)"></div>フォレスト
+          </button>
+          <button class="theme-btn" data-theme="custom">
+            <div class="theme-swatch" id="custom-swatch" style="background:linear-gradient(135deg,#1a1a2e,#f59e0b)"></div>カスタム
+          </button>
+        </div>
+
+        <div class="set-label">カスタムカラー</div>
+        <div class="color-grid">
+          <div class="color-row"><label>背景色</label><div class="color-input-wrap"><input type="color" id="cc-bg" value="#0f0f1a"><span class="color-hex" id="cc-bg-hex">#0f0f1a</span></div></div>
+          <div class="color-row"><label>サーフェス色</label><div class="color-input-wrap"><input type="color" id="cc-surface" value="#1a1a2e"><span class="color-hex" id="cc-surface-hex">#1a1a2e</span></div></div>
+          <div class="color-row"><label>アクセント色</label><div class="color-input-wrap"><input type="color" id="cc-accent" value="#7c6af7"><span class="color-hex" id="cc-accent-hex">#7c6af7</span></div></div>
+          <div class="color-row"><label>テキスト色</label><div class="color-input-wrap"><input type="color" id="cc-txt" value="#e8e8f0"><span class="color-hex" id="cc-txt-hex">#e8e8f0</span></div></div>
+          <div class="color-row"><label>枠線色</label><div class="color-input-wrap"><input type="color" id="cc-border" value="#2a1f6e"><span class="color-hex" id="cc-border-hex">#2a1f6e</span></div></div>
+        </div>
+        <button class="sb-btn" id="btn-apply-color" style="margin-bottom:10px">カスタムカラーを適用</button>
+
+        <div class="set-label">フォント</div>
+        <div class="set-item">
+          <label>ブラウザUIのフォント</label>
+          <select id="set-font">
+            <option value="">システムデフォルト</option>
+          </select>
+        </div>
+        <div id="font-preview" style="
+          margin-top:6px;padding:8px 10px;
+          background:var(--raised);border:1px solid var(--border);border-radius:7px;
+          font-size:14px;color:var(--txt);line-height:1.6;display:none;
+        ">
+          あいうえお ABC 123<br>
+          <span style="font-size:11px;color:var(--txt3)">The quick brown fox jumps over the lazy dog</span>
+        </div>
+        <div style="font-size:10px;color:var(--txt3);margin-top:4px;">
+          フォントファイル (.ttf/.otf/.woff/.woff2) を <code>fonts/</code> フォルダに入れて再起動すると選択できます
+        </div>
+
+        <div class="set-label">全般</div>
+        <div class="set-item">
+          <label>ホームページ</label>
+          <input id="set-home" type="text" placeholder="https://www.google.com">
+        </div>
+        <div class="set-item">
+          <label>検索エンジン</label>
+          <select id="set-engine">
+            <option value="google">Google</option>
+            <option value="bing">Bing</option>
+            <option value="ddg">DuckDuckGo</option>
+            <option value="yahoo">Yahoo! Japan</option>
+          </select>
+        </div>
+        <div class="set-item">
+          <label>ダウンロード保存先</label>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <input id="set-dlpath" type="text" placeholder="C:\Users\...\Downloads" style="flex:1">
+            <button class="sb-btn" id="btn-choose-dlpath" style="width:auto;padding:6px 10px;flex-shrink:0">参照</button>
+          </div>
+        </div>
+        <div class="set-item">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <span>🛡 広告ブロッカー</span>
+            <div class="toggle-wrap">
+              <input type="checkbox" id="set-adblock" style="display:none">
+              <div class="toggle-track" id="toggle-adblock-track">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </label>
+          <div style="font-size:10px;color:var(--txt3);margin-top:4px;">EasyList + 独自フィルタで広告をブロック</div>
+        </div>
+        <div class="set-item">
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;">
+            <span>🕵 プライベートモード</span>
+            <div class="toggle-wrap">
+              <input type="checkbox" id="set-private" style="display:none">
+              <div class="toggle-track" id="toggle-private-track">
+                <div class="toggle-thumb"></div>
+              </div>
+            </div>
+          </label>
+          <div style="font-size:10px;color:var(--txt3);margin-top:4px;">ONにすると再起動後に有効。履歴・キャッシュを保存しません。</div>
+        </div>
+
+        <div class="set-label">ホーム画面のクイックリンク</div>
+        <div id="ql-editor-list"></div>
+        <button class="sb-btn" id="btn-add-ql" style="margin-bottom:6px">＋ リンクを追加</button>
+
+        <div style="margin-top:10px;">
+          <button class="sb-btn" id="btn-save-set">設定をすべて保存</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="webviews">
+    <!-- New Tab Page -->
+    <div id="newtab">
+      <div class="nt-logo">Shark<span> Browser</span></div>
+      <div class="nt-sub">🦈 今日も快適なブラウジングを</div>
+      <div class="nt-search">
+        <input id="nt-input" type="text" placeholder="検索またはURLを入力...">
+        <button id="nt-go">
+          <svg width="15" height="15" viewBox="0 0 15 15" fill="none"><circle cx="6.5" cy="6.5" r="4" stroke="white" stroke-width="1.5"/><line x1="9.5" y1="9.5" x2="13.5" y2="13.5" stroke="white" stroke-width="1.6" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+      <div class="ql-grid" id="ql-grid"></div>
+      <div class="nt-bm-section" id="nt-bm-sec" style="display:none">
+        <h3>ブックマーク</h3>
+        <div class="nt-bm-grid" id="nt-bm-grid"></div>
+      </div>
+    </div>
+    <!-- webviews injected here -->
+  </div>
+
+  <!-- Find bar -->
+  <div id="findbar">
+    <input id="find-input" type="text" placeholder="検索...">
+    <span id="find-count"></span>
+    <button class="fbtn" id="find-prev">
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 7l3.5-3.5L9 7" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="fbtn" id="find-next">
+      <svg width="11" height="11" viewBox="0 0 11 11"><path d="M2 4l3.5 3.5L9 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <button class="fbtn" id="find-close">
+      <svg width="11" height="11" viewBox="0 0 11 11"><line x1="1" y1="1" x2="10" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="10" y1="1" x2="1" y2="10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
+    </button>
+  </div>
+</div>
+
+<div id="statusbar"><span id="status-txt">準備完了</span></div>
+<div id="toast"></div>
+
+<!-- Private mode badge -->
+<div id="private-badge" style="display:none;position:fixed;top:6px;left:50%;transform:translateX(-50%);
+  background:rgba(120,50,200,.85);color:#fff;font-size:11px;font-weight:700;
+  padding:3px 12px;border-radius:20px;z-index:9999;pointer-events:none;letter-spacing:.05em;">
+  🕵 プライベートモード
+</div>
+
+<!-- Transparent overlay to catch clicks outside context menu -->
+<div id="ctx-overlay" style="display:none;position:fixed;inset:0;z-index:9989;"></div>
+
+<!-- Right-click context menu -->
+<div id="ctx-menu">
+  <!-- Link section -->
+  <div class="ctx-group" id="ctx-group-link" style="display:none">
+    <div class="ctx-item" id="ctx-link-open">新しいタブで開く</div>
+    <div class="ctx-item" id="ctx-link-copy">リンクをコピー</div>
+    <div class="ctx-item" id="ctx-link-dl">リンク先を保存</div>
+    <div class="ctx-sep"></div>
+  </div>
+  <!-- Image section -->
+  <div class="ctx-group" id="ctx-group-img" style="display:none">
+    <div class="ctx-item" id="ctx-img-new-tab">画像を新しいタブで開く</div>
+    <div class="ctx-item" id="ctx-img-save">画像を保存</div>
+    <div class="ctx-item" id="ctx-img-copy">画像をコピー</div>
+    <div class="ctx-item" id="ctx-img-copy-url">画像のURLをコピー</div>
+    <div class="ctx-sep"></div>
+  </div>
+  <!-- Selection section -->
+  <div class="ctx-group" id="ctx-group-sel" style="display:none">
+    <div class="ctx-item" id="ctx-sel-copy">選択したテキストをコピー</div>
+    <div class="ctx-item" id="ctx-sel-search">選択範囲を検索</div>
+    <div class="ctx-sep"></div>
+  </div>
+  <!-- Input section -->
+  <div class="ctx-group" id="ctx-group-input" style="display:none">
+    <div class="ctx-item" id="ctx-input-cut">切り取り</div>
+    <div class="ctx-item" id="ctx-input-copy">コピー</div>
+    <div class="ctx-item" id="ctx-input-paste">貼り付け</div>
+    <div class="ctx-item" id="ctx-input-select-all">すべて選択</div>
+    <div class="ctx-sep"></div>
+  </div>
+  <!-- Page section (always shown) -->
+  <div class="ctx-item" id="ctx-back">← 戻る</div>
+  <div class="ctx-item" id="ctx-fwd">→ 進む</div>
+  <div class="ctx-item" id="ctx-reload">↺ 更新</div>
+  <div class="ctx-item" id="ctx-save-page">💾 ページを保存</div>
+  <div class="ctx-item" id="ctx-print">🖨 印刷</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctx-save-bm">★ ブックマークに追加</div>
+  <div class="ctx-item" id="ctx-add-fav">🔗 お気に入りに追加</div>
+  <div class="ctx-item" id="ctx-copy-url">🔗 URLをコピー</div>
+  <div class="ctx-item" id="ctx-new-tab">＋ 新しいタブ</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item" id="ctx-find">🔍 ページ内検索</div>
+  <div class="ctx-item" id="ctx-view-source">📄 ページのソースを表示</div>
+  <div class="ctx-item" id="ctx-devtools">🛠 開発者ツール</div>
+  <div class="ctx-sep"></div>
+  <div class="ctx-item ctx-danger" id="ctx-close-tab">✕ タブを閉じる</div>
+</div>
+
+<script>
+'use strict';
+
+// ── State ──────────────────────────────────────────────────────
+const SE = {
+  google: q=>`https://www.google.com/search?q=${encodeURIComponent(q)}`,
+  bing:   q=>`https://www.bing.com/search?q=${encodeURIComponent(q)}`,
+  ddg:    q=>`https://duckduckgo.com/?q=${encodeURIComponent(q)}`,
+  yahoo:  q=>`https://search.yahoo.co.jp/search?p=${encodeURIComponent(q)}`,
+};
+
+let tabs=[], activeId=null, tid=0;
+let bookmarks=[], history=[], settings={theme:'dark',homepage:'https://www.google.com',searchEngine:'google'};
+let sidebarOpen=false;
+
+// ── Helpers ────────────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+function toast(msg,ms=2200){
+  const t=$('toast'); t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),ms);
+}
+function fav(url){try{return`https://www.google.com/s2/favicons?domain=${new URL(url).hostname}&sz=32`;}catch{return '';}}
+function normalizeUrl(s){
+  s=s.trim();
+  if(!s) return settings.homepage;
+  if(/^https?:\/\//i.test(s)) return s;
+  if(/^[\w-]+\.[a-z]{2,}/i.test(s)) return 'https://'+s;
+  return SE[settings.searchEngine||'google'](s);
+}
+function dateLabel(iso){
+  const d=new Date(iso), now=new Date();
+  const td=new Date(now.getFullYear(),now.getMonth(),now.getDate());
+  const dd=new Date(d.getFullYear(),d.getMonth(),d.getDate());
+  if(dd.getTime()===td.getTime()) return '今日';
+  if(td-dd===86400000) return '昨日';
+  return `${d.getMonth()+1}月${d.getDate()}日`;
+}
+
+// ── Tab management ─────────────────────────────────────────────
+function createTab(url, activate=true){
+  const id=++tid;
+  const isNew = !url || url==='newtab';
+  const tabUrl = isNew ? 'newtab' : normalizeUrl(url);
+  tabs.push({id, url:tabUrl, title:'新しいタブ', loading:false, back:false, fwd:false});
+
+  // Tab element
+  const el=document.createElement('div');
+  el.className='tab'; el.dataset.id=id;
+  el.innerHTML=`
+    <span class="tab-fav-wrap">
+      <svg class="tab-fav-def" width="14" height="14" viewBox="0 0 14 14" fill="none"><circle cx="7" cy="7" r="6" stroke="var(--txt3)" stroke-width="1.2"/></svg>
+    </span>
+    <span class="tab-title">新しいタブ</span>
+    <button class="tab-x">×</button>`;
+  el.querySelector('.tab-x').onclick=e=>{e.stopPropagation();closeTab(id);};
+  el.onclick=e=>{if(!e.target.classList.contains('tab-x'))activateTab(id);};
+  $('tabbar').insertBefore(el,$('btn-newtab'));
+
+  // WebView (only for real URLs)
+  if(!isNew){
+    const wv=document.createElement('webview');
+    wv.src=tabUrl; wv.dataset.id=id;
+    wv.setAttribute('allowpopups','');
+    wvEvents(wv,id);
+    $('webviews').appendChild(wv);
+  }
+  if(activate) activateTab(id);
+  return id;
+}
+
+function activateTab(id){
+  activeId=id;
+  const tab=tabs.find(t=>t.id===id); if(!tab) return;
+  document.querySelectorAll('.tab').forEach(e=>e.classList.remove('active'));
+  const el=document.querySelector(`.tab[data-id="${id}"]`);
+  if(el){el.classList.add('active'); el.scrollIntoView({inline:'nearest'});}
+  document.querySelectorAll('webview').forEach(w=>w.classList.remove('active'));
+  if(tab.url==='newtab'){
+    $('newtab').classList.add('active');
+    $('urlbar').value='';
+    $('btn-back').disabled=true; $('btn-fwd').disabled=true;
+    renderNtBm();
+  } else {
+    $('newtab').classList.remove('active');
+    const wv=document.querySelector(`webview[data-id="${id}"]`);
+    if(wv) wv.classList.add('active');
+    $('urlbar').value=tab.url;
+    $('btn-back').disabled=!tab.back; $('btn-fwd').disabled=!tab.fwd;
+  }
+  bmToggleUpdate(tab.url);
+}
+
+function closeTab(id){
+  if(tabs.length===1){createTab('newtab'); closeTab(id); return;}
+  const idx=tabs.findIndex(t=>t.id===id);
+  tabs.splice(idx,1);
+  document.querySelector(`.tab[data-id="${id}"]`)?.remove();
+  document.querySelector(`webview[data-id="${id}"]`)?.remove();
+  if(activeId===id) activateTab(tabs[Math.min(idx,tabs.length-1)].id);
+}
+
+function setLoading(id,on){
+  const tab=tabs.find(t=>t.id===id); if(tab) tab.loading=on;
+  const wrap=document.querySelector(`.tab[data-id="${id}"] .tab-fav-wrap`); if(!wrap) return;
+  wrap.querySelector('.tab-spin')?.remove();
+  const img=wrap.querySelector('img'); const def=wrap.querySelector('.tab-fav-def');
+  if(on){
+    if(img) img.style.display='none';
+    if(def) def.style.display='none';
+    const sp=document.createElement('div'); sp.className='tab-spin'; wrap.appendChild(sp);
+    if(id===activeId){
+      $('btn-reload').innerHTML=`<svg width="14" height="14" viewBox="0 0 14 14"><line x1="2" y1="2" x2="12" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><line x1="12" y1="2" x2="2" y2="12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>`;
+    }
+  } else {
+    if(img){img.style.display='block';} else if(def){def.style.display='block';}
+    if(id===activeId){
+      $('btn-reload').innerHTML=`<svg width="16" height="16" viewBox="0 0 16 16" fill="none"><path d="M13.5 8A5.5 5.5 0 112.5 5" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><path d="M2.5 2v3h3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+    }
+  }
+}
+
+function setTabFav(id,url){
+  const wrap=document.querySelector(`.tab[data-id="${id}"] .tab-fav-wrap`); if(!wrap) return;
+  wrap.querySelector('.tab-spin')?.remove();
+  let img=wrap.querySelector('img');
+  if(!img){img=document.createElement('img');img.className='tab-fav';wrap.prepend(img);}
+  img.src=url; img.style.display='block';
+  const def=wrap.querySelector('.tab-fav-def'); if(def) def.style.display='none';
+  img.onerror=()=>{img.style.display='none'; if(def)def.style.display='block';};
+}
+
+function setTabTitle(id,t){
+  const tab=tabs.find(x=>x.id===id); if(tab) tab.title=t||'無題';
+  const el=document.querySelector(`.tab[data-id="${id}"] .tab-title`);
+  if(el) el.textContent=t||'無題';
+}
+
+// ── WebView events ─────────────────────────────────────────────
+function wvEvents(wv,id){
+  // Attach right-click context menu
+  attachCtxMenu(wv, id);
+  wv.addEventListener('did-start-loading',()=>{
+    setLoading(id,true);
+    if(id===activeId) $('status-txt').textContent='読み込み中...';
+  });
+  wv.addEventListener('did-stop-loading',()=>{
+    setLoading(id,false);
+    const tab=tabs.find(t=>t.id===id);
+    if(tab){tab.back=wv.canGoBack();tab.fwd=wv.canGoForward();}
+    if(id===activeId){
+      $('btn-back').disabled=!wv.canGoBack();
+      $('btn-fwd').disabled=!wv.canGoForward();
+      $('status-txt').textContent='準備完了';
+    }
+  });
+  wv.addEventListener('did-navigate', async e => {
+    const tab = tabs.find(t=>t.id===id); if(tab) tab.url=e.url;
+    if(id===activeId){$('urlbar').value=e.url; bmToggleUpdate(e.url);}
+    // Inject plugins
+    try {
+      const injections = await window.shark.getPluginInjections(e.url);
+      for (const inj of injections) {
+        if (inj.type === 'css') {
+          wv.insertCSS(inj.code).catch(()=>{});
+        } else if (inj.type === 'js') {
+          wv.executeJavaScript(inj.code).catch(()=>{});
+        }
+      }
+    } catch(err) {}
+  });
+  wv.addEventListener('did-navigate-in-page',e=>{
+    const tab=tabs.find(t=>t.id===id); if(tab) tab.url=e.url;
+    if(id===activeId){$('urlbar').value=e.url; bmToggleUpdate(e.url);}
+  });
+  wv.addEventListener('page-title-updated',e=>{
+    setTabTitle(id,e.title);
+    const tab=tabs.find(t=>t.id===id);
+    if(tab&&tab.url&&tab.url!=='newtab')
+      window.shark.addHistory({url:tab.url,title:e.title}).then(h=>{history=h;renderHist();});
+  });
+  wv.addEventListener('page-favicon-updated',e=>{
+    if(e.favicons&&e.favicons.length) setTabFav(id,e.favicons[0]);
+  });
+  wv.addEventListener('did-fail-load',e=>{
+    if(e.errorCode===-3) return;
+    setLoading(id,false);
+  });
+  wv.addEventListener('new-window',e=>createTab(e.url));
+  wv.addEventListener('update-target-url',e=>{
+    if(id===activeId) $('status-txt').textContent=e.url||'準備完了';
+  });
+}
+
+// ── Navigation ─────────────────────────────────────────────────
+function go(url){
+  const norm=normalizeUrl(url);
+  const tab=tabs.find(t=>t.id===activeId); if(!tab) return;
+  tab.url=norm;
+  $('urlbar').value=norm;
+  bmToggleUpdate(norm);
+  closeAc();
+  $('newtab').classList.remove('active');
+  let wv=document.querySelector(`webview[data-id="${activeId}"]`);
+  if(!wv){
+    wv=document.createElement('webview');
+    wv.dataset.id=activeId;
+    wv.setAttribute('allowpopups','');
+    wvEvents(wv,activeId);
+    $('webviews').appendChild(wv);
+  }
+  document.querySelectorAll('webview').forEach(v=>v.classList.remove('active'));
+  wv.classList.add('active');
+  wv.src=norm;
+}
+
+// ── URL bar ────────────────────────────────────────────────────
+const urlbar=$('urlbar');
+let acIdx=-1;
+
+urlbar.addEventListener('focus',()=>{urlbar.select(); showAc();});
+urlbar.addEventListener('input',showAc);
+urlbar.addEventListener('blur',()=>setTimeout(closeAc,180));
+urlbar.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){go(urlbar.value);urlbar.blur();}
+  else if(e.key==='Escape'){urlbar.blur();closeAc();}
+  else if(e.key==='ArrowDown') moveAc(1);
+  else if(e.key==='ArrowUp')   moveAc(-1);
+});
+
+function showAc(){
+  const q=urlbar.value.trim().toLowerCase(); if(!q){closeAc();return;}
+  const res=[];
+  bookmarks.filter(b=>b.title?.toLowerCase().includes(q)||b.url?.toLowerCase().includes(q))
+    .slice(0,3).forEach(b=>res.push({type:'★',title:b.title,url:b.url}));
+  history.filter(h=>h.title?.toLowerCase().includes(q)||h.url?.toLowerCase().includes(q))
+    .slice(0,4).forEach(h=>res.push({type:'🕐',title:h.title,url:h.url}));
+  res.push({type:'🔍',title:`「${urlbar.value}」を検索`,url:SE[settings.searchEngine||'google'](urlbar.value)});
+  const ac=$('ac');
+  ac.innerHTML=res.map((r,i)=>`
+    <div class="ac-item" data-i="${i}" data-url="${r.url}">
+      <img src="${fav(r.url)}" onerror="this.style.display='none'">
+      <div class="ac-txt"><div>${r.title||r.url}</div>${r.type!=='🔍'?`<div class="ac-sub">${r.url}</div>`:''}</div>
+      <span class="ac-tag">${r.type}</span>
+    </div>`).join('');
+  ac.querySelectorAll('.ac-item').forEach(el=>el.addEventListener('mousedown',e=>{
+    e.preventDefault(); go(el.dataset.url); urlbar.value=el.dataset.url;
+  }));
+  ac.style.display='block'; acIdx=-1;
+}
+function closeAc(){$('ac').style.display='none'; acIdx=-1;}
+function moveAc(d){
+  const items=$('ac').querySelectorAll('.ac-item');
+  items.forEach(i=>i.classList.remove('sel'));
+  acIdx=Math.max(-1,Math.min(items.length-1,acIdx+d));
+  if(acIdx>=0){items[acIdx].classList.add('sel'); urlbar.value=items[acIdx].dataset.url;}
+}
+
+// ── Nav buttons ────────────────────────────────────────────────
+$('btn-back').onclick=()=>{const w=document.querySelector(`webview[data-id="${activeId}"]`);if(w&&w.canGoBack())w.goBack();};
+$('btn-fwd').onclick=()=>{const w=document.querySelector(`webview[data-id="${activeId}"]`);if(w&&w.canGoForward())w.goForward();};
+$('btn-reload').onclick=()=>{
+  const tab=tabs.find(t=>t.id===activeId); if(!tab) return;
+  const w=document.querySelector(`webview[data-id="${activeId}"]`);
+  if(w){tab.loading?w.stop():w.reload();}
+};
+$('btn-home').onclick=()=>go(settings.homepage);
+$('btn-newtab').onclick=()=>createTab('newtab');
+
+// ── Bookmark toggle ────────────────────────────────────────────
+function bmToggleUpdate(url){
+  const on=bookmarks.some(b=>b.url===url);
+  $('btn-bm').classList.toggle('on',on);
+}
+$('btn-bm').onclick=async()=>{
+  const tab=tabs.find(t=>t.id===activeId); if(!tab||tab.url==='newtab') return;
+  const on=bookmarks.some(b=>b.url===tab.url);
+  if(on){bookmarks=await window.shark.removeBookmark(tab.url); toast('ブックマークを削除しました');}
+  else  {bookmarks=await window.shark.addBookmark({url:tab.url,title:tab.title||tab.url}); toast('★ ブックマークに追加しました');}
+  bmToggleUpdate(tab.url); renderBm(); renderNtBm();
+};
+
+// ── Bookmarks render ───────────────────────────────────────────
+function renderBm(filter=''){
+  const list=$('bm-list');
+  const items=bookmarks.filter(b=>!filter||b.title?.toLowerCase().includes(filter)||b.url?.toLowerCase().includes(filter));
+  if(!items.length){list.innerHTML=`<div class="sb-empty">${filter?'見つかりません':'ブックマークがありません'}</div>`;return;}
+  list.innerHTML=items.map(b=>`
+    <div class="sb-item" data-url="${b.url}">
+      <img src="${fav(b.url)}" onerror="this.style.display='none'">
+      <div class="sb-item-txt"><div class="sb-item-title">${b.title||b.url}</div><div class="sb-item-url">${b.url}</div></div>
+      <button class="sb-del" data-url="${b.url}" title="削除">×</button>
+    </div>`).join('');
+  list.querySelectorAll('.sb-item').forEach(el=>el.onclick=e=>{
+    if(e.target.classList.contains('sb-del'))return;
+    go(el.dataset.url); closeSb();
+  });
+  list.querySelectorAll('.sb-del').forEach(btn=>btn.onclick=async e=>{
+    e.stopPropagation();
+    bookmarks=await window.shark.removeBookmark(btn.dataset.url);
+    renderBm($('bm-search').value.toLowerCase()); renderNtBm();
+    const tab=tabs.find(t=>t.id===activeId);
+    bmToggleUpdate(tab?.url||'');
+    toast('ブックマークを削除しました');
+  });
+}
+$('bm-search').oninput=e=>renderBm(e.target.value.toLowerCase());
+
+function renderNtBm(){
+  const sec=$('nt-bm-sec'), grid=$('nt-bm-grid');
+  if(!bookmarks.length){sec.style.display='none';return;}
+  sec.style.display='block';
+  grid.innerHTML=bookmarks.slice(0,12).map(b=>`
+    <div class="nt-bm" onclick="go('${b.url}')">
+      <img src="${fav(b.url)}" onerror="this.style.display='none'">
+      <span>${b.title||b.url}</span>
+    </div>`).join('');
+}
+
+// ── History render ─────────────────────────────────────────────
+function renderHist(filter=''){
+  const list=$('hist-list');
+  const items=history.filter(h=>!filter||h.title?.toLowerCase().includes(filter)||h.url?.toLowerCase().includes(filter));
+  if(!items.length){list.innerHTML=`<div class="sb-empty">${filter?'見つかりません':'履歴がありません'}</div>`;return;}
+  const groups={};
+  items.forEach(h=>{const d=dateLabel(h.at);if(!groups[d])groups[d]=[];groups[d].push(h);});
+  list.innerHTML=Object.entries(groups).map(([d,hs])=>
+    `<div class="hist-date">${d}</div>`+hs.map(h=>`
+      <div class="sb-item" data-url="${h.url}">
+        <img src="${fav(h.url)}" onerror="this.style.display='none'">
+        <div class="sb-item-txt"><div class="sb-item-title">${h.title||h.url}</div><div class="sb-item-url">${h.url}</div></div>
+      </div>`).join('')
+  ).join('');
+  list.querySelectorAll('.sb-item').forEach(el=>el.onclick=()=>{go(el.dataset.url);closeSb();});
+}
+$('hist-search').oninput=e=>renderHist(e.target.value.toLowerCase());
+$('btn-clear-hist').onclick=async()=>{
+  if(!confirm('履歴をすべて削除しますか？')) return;
+  history=await window.shark.clearHistory(); renderHist(); toast('履歴を削除しました');
+};
+
+// ── Sidebar ────────────────────────────────────────────────────
+function openSb(){sidebarOpen=true;$('sidebar').classList.add('open');$('sb-overlay').classList.add('show');}
+function closeSb(){sidebarOpen=false;$('sidebar').classList.remove('open');$('sb-overlay').classList.remove('show');}
+$('btn-sidebar').onclick=()=>sidebarOpen?closeSb():openSb();
+$('sb-overlay').onclick=closeSb;
+document.querySelectorAll('.sbtab').forEach(tab=>tab.onclick=()=>{
+  document.querySelectorAll('.sbtab').forEach(t=>t.classList.remove('active'));
+  document.querySelectorAll('.sb-panel').forEach(p=>p.classList.remove('active'));
+  tab.classList.add('active');
+  $('panel-'+tab.dataset.p).classList.add('active');
+  if(!sidebarOpen) openSb();
+});
+
+// ── Settings ───────────────────────────────────────────────────
+const DEFAULT_QL = [
+  {name:'Google', url:'https://www.google.com', emoji:'🔍', color:'#ea4335'},
+  {name:'YouTube',url:'https://www.youtube.com',emoji:'▶',  color:'#ff0000'},
+  {name:'X',      url:'https://x.com',          emoji:'𝕏',  color:'#000000'},
+  {name:'GitHub', url:'https://github.com',     emoji:'⌥',  color:'#333333'},
+  {name:'Reddit', url:'https://www.reddit.com', emoji:'●',  color:'#ff4500'},
+];
+
+// All data stored in settings.* (saved to userData via IPC — survives ZIP updates)
+function getCustomColors() { return settings.customColors || null; }
+function getQuicklinks()   { return settings.quicklinks   || DEFAULT_QL; }
+
+async function persistSettings() {
+  await window.shark.saveSettings(settings);
+}
+
+function applyCustomColors(c) {
+  const r = document.documentElement.style;
+  r.setProperty('--bg',      c.bg);
+  r.setProperty('--surface', c.surface);
+  r.setProperty('--raised',  lighten(c.bg, 8));
+  r.setProperty('--hover',   lighten(c.bg, 14));
+  r.setProperty('--active',  lighten(c.bg, 20));
+  r.setProperty('--accent',  c.accent);
+  r.setProperty('--accentH', lighten(c.accent, 12));
+  r.setProperty('--glow',    hexToRgba(c.accent, 0.22));
+  r.setProperty('--txt',     c.txt);
+  r.setProperty('--txt2',    hexToRgba(c.txt, 0.65));
+  r.setProperty('--txt3',    hexToRgba(c.txt, 0.35));
+  r.setProperty('--border',  hexToRgba(c.border||c.accent, 0.25));
+  r.setProperty('--borderS', hexToRgba(c.border||c.accent, 0.5));
+  r.setProperty('--tabBg',   darken(c.bg, 5));
+  r.setProperty('--sb',      lighten(c.bg, 18));
+  $('custom-swatch').style.background = `linear-gradient(135deg,${c.bg},${c.accent})`;
+}
+
+function clearCustomColors() {
+  ['--bg','--surface','--raised','--hover','--active','--accent','--accentH',
+   '--glow','--txt','--txt2','--txt3','--border','--borderS','--tabBg','--sb']
+    .forEach(p => document.documentElement.style.removeProperty(p));
+}
+
+function applyTheme(theme) {
+  if (theme === 'custom') {
+    const cc = getCustomColors();
+    if (cc) { document.documentElement.removeAttribute('data-theme'); applyCustomColors(cc); }
+  } else {
+    clearCustomColors();
+    document.documentElement.setAttribute('data-theme', theme || 'dark');
+  }
+}
+
+function lighten(hex, pct) {
+  const [r,g,b] = hexRgb(hex); const f = pct/100;
+  return rgbHex(Math.min(255,r+Math.round((255-r)*f)), Math.min(255,g+Math.round((255-g)*f)), Math.min(255,b+Math.round((255-b)*f)));
+}
+function darken(hex, pct) {
+  const [r,g,b] = hexRgb(hex); const f = 1-pct/100;
+  return rgbHex(Math.round(r*f), Math.round(g*f), Math.round(b*f));
+}
+function hexRgb(hex) {
+  const h = hex.replace('#','');
+  return [parseInt(h.slice(0,2),16), parseInt(h.slice(2,4),16), parseInt(h.slice(4,6),16)];
+}
+function rgbHex(r,g,b) { return '#'+[r,g,b].map(v=>v.toString(16).padStart(2,'0')).join(''); }
+function hexToRgba(hex,a) { const [r,g,b]=hexRgb(hex); return `rgba(${r},${g},${b},${a})`; }
+
+function loadSetUI() {
+  $('set-home').value   = settings.homepage||'https://www.google.com';
+  $('set-engine').value = settings.searchEngine||'google';
+  $('set-dlpath').value = settings.downloadPath||'';
+  // private mode toggle
+  const adTrack = $('toggle-adblock-track');
+  if (settings.adblockEnabled !== false) adTrack.classList.add('on');
+  else adTrack.classList.remove('on');
+  const track = $('toggle-private-track');
+  if (settings.privateMode) track.classList.add('on');
+  else track.classList.remove('on');
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.toggle('active', b.dataset.theme===(settings.theme||'dark')));
+  const cc = getCustomColors() || {bg:'#0f0f1a',surface:'#1a1a2e',accent:'#7c6af7',txt:'#e8e8f0',border:'#1e1860'};
+  $('cc-bg').value      = cc.bg;      $('cc-bg-hex').textContent      = cc.bg;
+  $('cc-surface').value = cc.surface; $('cc-surface-hex').textContent  = cc.surface;
+  $('cc-accent').value  = cc.accent;  $('cc-accent-hex').textContent   = cc.accent;
+  $('cc-txt').value     = cc.txt;     $('cc-txt-hex').textContent      = cc.txt;
+  $('cc-border').value  = cc.border||'#1e1860'; $('cc-border-hex').textContent = cc.border||'#1e1860';
+  $('custom-swatch').style.background = `linear-gradient(135deg,${cc.bg},${cc.accent})`;
+  renderQlEditor();
+}
+
+// Color picker live hex display
+['bg','surface','accent','txt','border'].forEach(k=>{
+  $(`cc-${k}`).addEventListener('input', e=>{
+    $(`cc-${k}-hex`).textContent = e.target.value;
+    $('custom-swatch').style.background = `linear-gradient(135deg,${$('cc-bg').value},${$('cc-accent').value})`;
+  });
+});
+
+$('btn-apply-color').onclick = async () => {
+  const c = {
+    bg:$('cc-bg').value, surface:$('cc-surface').value,
+    accent:$('cc-accent').value, txt:$('cc-txt').value, border:$('cc-border').value,
+  };
+  settings.customColors = c;
+  settings.theme = 'custom';
+  document.querySelectorAll('.theme-btn').forEach(b=>b.classList.toggle('active', b.dataset.theme==='custom'));
+  document.documentElement.removeAttribute('data-theme');
+  applyCustomColors(c);
+  await persistSettings();
+  toast('カスタムカラーを適用・保存しました 🎨');
+};
+
+document.querySelectorAll('.theme-btn').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.theme-btn').forEach(x=>x.classList.remove('active'));
+  b.classList.add('active');
+  settings.theme = b.dataset.theme;
+  if(b.dataset.theme === 'custom') {
+    if(settings.customColors) { document.documentElement.removeAttribute('data-theme'); applyCustomColors(settings.customColors); }
+    else toast('先にカスタムカラーを設定してください');
+  } else {
+    clearCustomColors();
+    document.documentElement.setAttribute('data-theme', settings.theme);
+  }
+  autoSave(true);
+});
+
+// ── Quicklink editor ──────────────────────────────────────────
+function renderQlEditor() {
+  const ql = getQuicklinks();
+  const el = $('ql-editor-list');
+  el.innerHTML = ql.map((q,i)=>`
+    <div class="ql-edit-item" data-i="${i}">
+      <input class="ql-edit-emoji" type="text" value="${q.emoji||'🔗'}" maxlength="2" placeholder="🔗" title="絵文字">
+      <input class="ql-edit-name"  type="text" value="${q.name}"  placeholder="名前">
+      <input class="ql-edit-url"   type="text" value="${q.url}"   placeholder="https://...">
+      <input class="ql-edit-color" type="color" value="${q.color||'#555555'}">
+      <button class="ql-del" data-i="${i}" title="削除">×</button>
+    </div>`).join('');
+  el.querySelectorAll('.ql-del').forEach(btn=>btn.onclick=async()=>{
+    const ql2 = getQuicklinks();
+    ql2.splice(Number(btn.dataset.i),1);
+    settings.quicklinks = ql2;
+    await persistSettings();
+    renderQlEditor(); renderQl();
+  });
+}
+
+$('btn-add-ql').onclick = async () => {
+  const ql = getQuicklinks();
+  ql.push({name:'新しいリンク', url:'https://', emoji:'🔗', color:'#555555'});
+  settings.quicklinks = ql;
+  await persistSettings();
+  renderQlEditor(); renderQl();
+};
+
+function readQlFromEditor() {
+  const items = $('ql-editor-list').querySelectorAll('.ql-edit-item');
+  return Array.from(items).map(row=>({
+    emoji: row.querySelector('.ql-edit-emoji').value||'🔗',
+    name:  row.querySelector('.ql-edit-name').value ||'無題',
+    url:   row.querySelector('.ql-edit-url').value  ||'https://',
+    color: row.querySelector('.ql-edit-color').value||'#555555',
+  }));
+}
+
+function renderQl() {
+  const ql = getQuicklinks();
+  $('ql-grid').innerHTML = ql.map(q=>`
+    <div class="ql" data-url="${q.url}">
+      <div class="ql-icon" style="background:${q.color}">${q.emoji||'🔗'}</div>
+      ${q.name}
+    </div>`).join('');
+  $('ql-grid').querySelectorAll('.ql').forEach(el=>el.onclick=()=>go(el.dataset.url));
+}
+
+// ── Auto-save: debounce helper ────────────────────────────────
+let _saveTimer = null;
+function autoSave(immediate = false) {
+  clearTimeout(_saveTimer);
+  const doSave = async () => {
+    settings.homepage     = $('set-home').value    || 'https://www.google.com';
+    settings.searchEngine = $('set-engine').value  || 'google';
+    settings.downloadPath = $('set-dlpath').value  || '';
+    settings.adblockEnabled = $('toggle-adblock-track').classList.contains('on');
+    // Only read quicklinks from editor if the settings panel is currently open
+    // — prevents empty editor from overwriting saved quicklinks
+    if ($('panel-settings').classList.contains('active')) {
+      const ql = readQlFromEditor();
+      if (ql.length > 0) settings.quicklinks = ql;
+    }
+    const newPrivate = $('toggle-private-track').classList.contains('on');
+    const wasPrivate = settings.privateMode;
+    settings.privateMode  = newPrivate;
+    await persistSettings();
+    if (newPrivate !== wasPrivate) {
+      toast(`プライベートモード${newPrivate?'ON':'OFF'} — 再起動して適用`);
+      setTimeout(() => window.shark.restartApp(), 1500);
+    }
+  };
+  if (immediate) { doSave(); return; }
+  _saveTimer = setTimeout(doSave, 600);
+}
+
+// Attach auto-save to all settings inputs
+function attachAutoSave() {
+  $('set-home').addEventListener('input',    () => autoSave());
+  $('set-engine').addEventListener('change', () => autoSave(true));
+  $('set-dlpath').addEventListener('input',  () => autoSave());
+  $('toggle-private-track').addEventListener('click-handled', () => autoSave(true));
+  // Quicklink editor: delegate to ql-editor-list for dynamically added inputs
+  $('ql-editor-list').addEventListener('input',  () => autoSave());
+  $('ql-editor-list').addEventListener('change', () => autoSave());
+}
+
+$('btn-save-set').onclick = async () => {
+  autoSave(true);
+  renderQl();
+  toast('設定を保存しました ✓');
+};
+
+// ── Find in page ───────────────────────────────────────────────
+$('btn-find').onclick=toggleFind;
+$('find-close').onclick=()=>{$('findbar').classList.remove('show'); document.querySelector(`webview[data-id="${activeId}"]`)?.stopFindInPage('clearSelection');};
+$('find-next').onclick=()=>doFind(true);
+$('find-prev').onclick=()=>doFind(false);
+$('find-input').oninput=()=>doFind(true);
+$('find-input').onkeydown=e=>{if(e.key==='Enter')doFind(!e.shiftKey); if(e.key==='Escape')$('find-close').click();};
+function toggleFind(){
+  const fb=$('findbar'); fb.classList.toggle('show');
+  if(fb.classList.contains('show')){$('find-input').focus();$('find-input').select();}
+  else document.querySelector(`webview[data-id="${activeId}"]`)?.stopFindInPage('clearSelection');
+}
+function doFind(fwd){
+  const wv=document.querySelector(`webview[data-id="${activeId}"]`);
+  const q=$('find-input').value; if(!wv||!q) return;
+  wv.findInPage(q,{forward:fwd,findNext:true});
+  wv.addEventListener('found-in-page',e=>{
+    $('find-count').textContent=e.result.matches?`${e.result.activeMatchOrdinal}/${e.result.matches}`:'なし';
+  },{once:true});
+}
+
+// ── DevTools ───────────────────────────────────────────────────
+$('btn-devtools').onclick=()=>{document.querySelector(`webview[data-id="${activeId}"]`)?.openDevTools();};
+
+// ── New tab search ─────────────────────────────────────────────
+$('nt-input').onkeydown=e=>{if(e.key==='Enter')go($('nt-input').value);};
+$('nt-go').onclick=()=>go($('nt-input').value);
+
+// ── Window controls — direct IPC calls ─────────────────────────
+$('wbtn-min').onclick   = () => window.shark.minimize();
+$('wbtn-max').onclick   = () => window.shark.maximize();
+$('wbtn-close').onclick = () => window.shark.close();
+
+// ── Fullscreen ─────────────────────────────────────────────────
+window.shark.onFullscreen(full=>{
+  $('titlebar').style.display=full?'none':'flex';
+});
+
+// ── Keyboard shortcuts ─────────────────────────────────────────
+document.addEventListener('keydown',e=>{
+  if(e.key==='F11'){e.preventDefault(); window.shark.fullscreen(); return;}
+  if(e.ctrlKey||e.metaKey){
+    switch(e.key){
+      case 't': e.preventDefault(); createTab('newtab'); break;
+      case 'w': e.preventDefault(); if(activeId) closeTab(activeId); break;
+      case 'l': e.preventDefault(); urlbar.focus(); urlbar.select(); break;
+      case 'r': e.preventDefault(); $('btn-reload').click(); break;
+      case 'f': e.preventDefault(); toggleFind(); break;
+      case 'd': e.preventDefault(); $('btn-bm').click(); break;
+      case 'b': e.preventDefault(); document.querySelector('.sbtab[data-p="bookmarks"]').click(); break;
+      case 'h': e.preventDefault(); document.querySelector('.sbtab[data-p="history"]').click(); break;
+    }
+  }
+  if(e.altKey){
+    if(e.key==='ArrowLeft')  $('btn-back').click();
+    if(e.key==='ArrowRight') $('btn-fwd').click();
+  }
+});
+
+// ── Adblock toggle ────────────────────────────────────────────
+$('toggle-adblock-track').onclick = () => {
+  $('toggle-adblock-track').classList.toggle('on');
+  autoSave(true);
+};
+
+// ── Plugin panel ──────────────────────────────────────────────
+let pluginList = [];
+
+async function loadPluginPanel() {
+  pluginList = await window.shark.getPlugins();
+  renderPluginPanel();
+}
+
+function renderPluginPanel() {
+  const el = $('plugin-list');
+  if (!pluginList.length) {
+    el.innerHTML = `<div class="sb-empty">
+      プラグインがありません<br>
+      <span style="font-size:10px">plugins/ フォルダにプラグインを追加してください</span>
+    </div>`;
+    return;
+  }
+  el.innerHTML = pluginList.map((p, i) => `
+    <div class="plugin-item" data-id="${p.id}">
+      <div class="plugin-header">
+        <span class="plugin-name">🧩 ${p.name}</span>
+        <span class="plugin-ver">v${p.version||'1.0'}</span>
+        <div class="toggle-track ${p.enabled?'on':''}" data-plugin-id="${p.id}" id="ptog-${p.id}" style="flex-shrink:0">
+          <div class="toggle-thumb"></div>
+        </div>
+      </div>
+      <div class="plugin-desc">${p.description||''}</div>
+      <div class="plugin-author">by ${p.author||'Unknown'}${p.homepage?` · <a href="#" data-href="${p.homepage}" style="color:var(--accent)">GitHub</a>`:''}</div>
+      ${p.settings&&p.settings.length?`
+      <div class="plugin-actions">
+        <button class="plugin-btn" data-plugin-cfg="${p.id}">⚙ 設定</button>
+      </div>
+      <div class="plugin-settings" id="pcfg-${p.id}">
+        ${p.settings.map(s => `
+          <div class="plugin-setting-row">
+            <label>${s.label}</label>
+            ${s.type==='toggle'
+              ? `<div class="toggle-track ${(p.userSettings[s.key]??s.default)?'on':''}" data-ps-key="${s.key}" data-ps-plugin="${p.id}"><div class="toggle-thumb"></div></div>`
+              : `<input type="text" value="${p.userSettings[s.key]??s.default??''}" data-ps-key="${s.key}" data-ps-plugin="${p.id}">`
+            }
+          </div>`).join('')}
+        <button class="plugin-btn primary" data-plugin-save="${p.id}">保存</button>
+      </div>`:'' }
+    </div>`).join('');
+
+  // Toggle enable/disable
+  el.querySelectorAll('[data-plugin-id]').forEach(tog => {
+    tog.onclick = async () => {
+      const id = tog.dataset.pluginId;
+      tog.classList.toggle('on');
+      const enabled = tog.classList.contains('on');
+      await window.shark.setPluginEnabled(id, enabled);
+      const p = pluginList.find(x=>x.id===id);
+      if (p) p.enabled = enabled;
+      toast(`🧩 ${id}: ${enabled?'有効':'無効'}にしました`);
+    };
+  });
+
+  // Settings toggle
+  el.querySelectorAll('[data-plugin-cfg]').forEach(btn => {
+    btn.onclick = () => {
+      const cfg = $('pcfg-'+btn.dataset.pluginCfg);
+      if (cfg) cfg.classList.toggle('open');
+    };
+  });
+
+  // Plugin settings toggle switches
+  el.querySelectorAll('[data-ps-key][id^="ptog-"],.toggle-track[data-ps-key]').forEach(tog => {
+    if (!tog.dataset.psKey) return;
+    tog.onclick = () => tog.classList.toggle('on');
+  });
+
+  // Save plugin settings
+  el.querySelectorAll('[data-plugin-save]').forEach(btn => {
+    btn.onclick = async () => {
+      const id = btn.dataset.pluginSave;
+      const cfg = $('pcfg-'+id);
+      const userSettings = {};
+      cfg.querySelectorAll('[data-ps-key]').forEach(el => {
+        const key = el.dataset.psKey;
+        if (el.tagName === 'INPUT') userSettings[key] = el.value;
+        else userSettings[key] = el.classList.contains('on'); // toggle
+      });
+      await window.shark.savePluginSettings(id, userSettings);
+      const p = pluginList.find(x=>x.id===id);
+      if (p) p.userSettings = userSettings;
+      toast(`🧩 ${id}: 設定を保存しました`);
+    };
+  });
+
+  // GitHub links
+  el.querySelectorAll('[data-href]').forEach(a => {
+    a.onclick = e => { e.preventDefault(); go(a.dataset.href); };
+  });
+}
+$('toggle-private-track').onclick = () => {
+  $('toggle-private-track').classList.toggle('on');
+  autoSave(true);
+};
+
+// ── Download path chooser ─────────────────────────────────────
+$('btn-choose-dlpath').onclick = async () => {
+  const p = await window.shark.chooseDownloadPath();
+  if (p) $('set-dlpath').value = p;
+};
+
+// ── Downloads panel ───────────────────────────────────────────
+let dlItems = {};  // id → entry (in-progress & done)
+
+function fmtSize(bytes) {
+  if (!bytes || bytes === 0) return '';
+  if (bytes < 1024) return bytes + ' B';
+  if (bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+function renderDlList() {
+  const list = $('dl-list');
+  const entries = Object.values(dlItems).sort((a,b)=> (b.startedAt||'').localeCompare(a.startedAt||''));
+  if (!entries.length) { list.innerHTML='<div class="sb-empty">ダウンロード履歴がありません</div>'; return; }
+  list.innerHTML = entries.map(d => {
+    const pct = d.size ? Math.round(d.received/d.size*100) : 0;
+    const statusLabel = d.status==='completed'?'完了':d.status==='cancelled'?'キャンセル':d.status==='interrupted'?'失敗':`${pct}%`;
+    const statusClass = d.status==='completed'?'done':d.status==='cancelled'||d.status==='interrupted'?'cancelled':'';
+    return `<div class="dl-item" data-id="${d.id}">
+      <div class="dl-item-name" title="${d.path}">${d.filename}</div>
+      ${d.status==='progressing'?`<div class="dl-progress"><div class="dl-progress-bar" style="width:${pct}%"></div></div>`:''}
+      <div class="dl-meta">
+        <span class="dl-status ${statusClass}">${statusLabel}</span>
+        <span>${fmtSize(d.size)}</span>
+      </div>
+      ${d.status==='completed'?`
+      <div class="dl-actions">
+        <button class="dl-btn" data-action="open" data-path="${d.path}">開く</button>
+        <button class="dl-btn" data-action="folder" data-path="${d.path}">フォルダを開く</button>
+      </div>`:''}
+    </div>`;
+  }).join('');
+  list.querySelectorAll('.dl-btn').forEach(btn => {
+    btn.onclick = () => {
+      if (btn.dataset.action==='open')   window.shark.openFile(btn.dataset.path);
+      if (btn.dataset.action==='folder') window.shark.showInFolder(btn.dataset.path);
+    };
+  });
+}
+
+async function loadDownloads() {
+  const list = await window.shark.getDownloads();
+  dlItems = {};
+  list.forEach(d => { dlItems[d.id] = d; });
+  renderDlList();
+}
+
+window.shark.onDownloadStart(d => {
+  dlItems[d.id] = d;
+  renderDlList();
+  // Auto-open downloads panel
+  document.querySelector('.sbtab[data-p="downloads"]').click();
+  toast(`⬇ ダウンロード開始: ${d.filename}`);
+});
+window.shark.onDownloadUpdate(d => {
+  if (dlItems[d.id]) { dlItems[d.id] = { ...dlItems[d.id], ...d }; renderDlList(); }
+});
+window.shark.onDownloadDone(d => {
+  dlItems[d.id] = { ...dlItems[d.id], ...d };
+  renderDlList();
+  toast(d.status==='completed' ? `✓ ダウンロード完了: ${d.filename}` : `✕ ダウンロード失敗: ${d.filename}`);
+});
+
+$('btn-clear-dl').onclick = async () => {
+  await window.shark.clearDownloads();
+  dlItems = {}; renderDlList();
+  toast('ダウンロード履歴を削除しました');
+};
+
+// ── Right-click context menu ──────────────────────────────────
+const ctxMenu = $('ctx-menu');
+let ctxInfo = {}; // context info from webview context-menu event
+
+function showCtxMenu(x, y) {
+  $('ctx-overlay').style.display = 'block';
+  ctxMenu.style.display = 'block';
+  requestAnimationFrame(() => {
+    const mw = ctxMenu.offsetWidth, mh = ctxMenu.offsetHeight;
+    ctxMenu.style.left = Math.min(x, window.innerWidth  - mw - 6) + 'px';
+    ctxMenu.style.top  = Math.min(y, window.innerHeight - mh - 6) + 'px';
+  });
+}
+function hideCtxMenu() {
+  ctxMenu.style.display = 'none';
+  $('ctx-overlay').style.display = 'none';
+}
+// Overlay catches clicks on webview area (webview swallows mouse events)
+$('ctx-overlay').addEventListener('mousedown', hideCtxMenu);
+
+// Show/hide context menu groups based on what was right-clicked
+function buildCtxMenu(info, wv) {
+  const hasLink  = !!info.linkURL;
+  const hasImg   = !!info.srcURL;
+  const hasSel   = !!info.selectionText;
+  const isInput  = info.isEditable;
+
+  $('ctx-group-link').style.display  = hasLink  ? '' : 'none';
+  $('ctx-group-img').style.display   = hasImg   ? '' : 'none';
+  $('ctx-group-sel').style.display   = hasSel   ? '' : 'none';
+  $('ctx-group-input').style.display = isInput  ? '' : 'none';
+
+  // Grey-out back/fwd if not possible
+  $('ctx-back').style.opacity = wv?.canGoBack()    ? '1' : '0.35';
+  $('ctx-fwd').style.opacity  = wv?.canGoForward() ? '1' : '0.35';
+}
+
+// webview context-menu event gives us full info about what was clicked
+function attachCtxMenu(wv, id) {
+  wv.addEventListener('context-menu', (e) => {
+    e.preventDefault();
+    ctxInfo = {
+      linkURL:       e.params?.linkURL       || '',
+      srcURL:        e.params?.srcURL        || '',
+      selectionText: e.params?.selectionText || '',
+      isEditable:    e.params?.isEditable    || false,
+      pageURL:       e.params?.pageURL       || '',
+      frameURL:      e.params?.frameURL      || '',
+      tabId:         id,
+    };
+    buildCtxMenu(ctxInfo, wv);
+    showCtxMenu(e.params?.x || 0, e.params?.y || 0);
+  });
+}
+
+document.addEventListener('mousedown', e => {
+  if (!ctxMenu.contains(e.target) && e.target.id !== 'ctx-overlay') hideCtxMenu();
+});
+document.addEventListener('keydown', e => { if(e.key==='Escape') hideCtxMenu(); });
+
+// ── Helper: execute JS in active webview ──────────────────────
+function wvExec(js) {
+  const wv = document.querySelector(`webview[data-id="${activeId}"]`);
+  if (wv) wv.executeJavaScript(js).catch(()=>{});
+}
+
+// ── Link items ────────────────────────────────────────────────
+$('ctx-link-open').onclick = () => {
+  if (ctxInfo.linkURL) createTab(ctxInfo.linkURL);
+  hideCtxMenu();
+};
+$('ctx-link-copy').onclick = () => {
+  if (ctxInfo.linkURL) { navigator.clipboard.writeText(ctxInfo.linkURL); toast('リンクをコピーしました'); }
+  hideCtxMenu();
+};
+$('ctx-link-dl').onclick = () => {
+  if (ctxInfo.linkURL) {
+    const wv = document.querySelector(`webview[data-id="${activeId}"]`);
+    if (wv) wv.downloadURL(ctxInfo.linkURL);
+  }
+  hideCtxMenu();
+};
+
+// ── Image items ───────────────────────────────────────────────
+$('ctx-img-new-tab').onclick = () => {
+  if (ctxInfo.srcURL) createTab(ctxInfo.srcURL);
+  hideCtxMenu();
+};
+$('ctx-img-save').onclick = () => {
+  if (ctxInfo.srcURL) {
+    const wv = document.querySelector(`webview[data-id="${activeId}"]`);
+    if (wv) wv.downloadURL(ctxInfo.srcURL);
+  }
+  hideCtxMenu();
+};
+$('ctx-img-copy').onclick = () => {
+  if (ctxInfo.srcURL) {
+    // Fetch image and write to clipboard
+    fetch(ctxInfo.srcURL)
+      .then(r => r.blob())
+      .then(blob => {
+        const item = new ClipboardItem({ [blob.type]: blob });
+        navigator.clipboard.write([item]);
+        toast('画像をコピーしました');
+      })
+      .catch(() => toast('画像のコピーに失敗しました'));
+  }
+  hideCtxMenu();
+};
+$('ctx-img-copy-url').onclick = () => {
+  if (ctxInfo.srcURL) { navigator.clipboard.writeText(ctxInfo.srcURL); toast('画像URLをコピーしました'); }
+  hideCtxMenu();
+};
+
+// ── Selection items ───────────────────────────────────────────
+$('ctx-sel-copy').onclick = () => {
+  if (ctxInfo.selectionText) { navigator.clipboard.writeText(ctxInfo.selectionText); toast('コピーしました'); }
+  hideCtxMenu();
+};
+$('ctx-sel-search').onclick = () => {
+  if (ctxInfo.selectionText) createTab(SE[settings.searchEngine||'google'](ctxInfo.selectionText));
+  hideCtxMenu();
+};
+
+// ── Input items ───────────────────────────────────────────────
+$('ctx-input-cut').onclick = () => {
+  wvExec(`document.execCommand('cut')`); hideCtxMenu();
+};
+$('ctx-input-copy').onclick = () => {
+  wvExec(`document.execCommand('copy')`); hideCtxMenu();
+};
+$('ctx-input-paste').onclick = async () => {
+  const text = await navigator.clipboard.readText().catch(()=>'');
+  if (text) wvExec(`document.execCommand('insertText', false, ${JSON.stringify(text)})`);
+  hideCtxMenu();
+};
+$('ctx-input-select-all').onclick = () => {
+  wvExec(`document.execCommand('selectAll')`); hideCtxMenu();
+};
+
+// ── Page items ────────────────────────────────────────────────
+$('ctx-back').onclick    = () => { $('btn-back').click();   hideCtxMenu(); };
+$('ctx-fwd').onclick     = () => { $('btn-fwd').click();    hideCtxMenu(); };
+$('ctx-reload').onclick  = () => { $('btn-reload').click(); hideCtxMenu(); };
+$('ctx-save-page').onclick = () => {
+  wvExec(`window.location.href`).then(url => {
+    const wv = document.querySelector(`webview[data-id="${activeId}"]`);
+    if (wv) wv.downloadURL(wv.getURL());
+  });
+  hideCtxMenu();
+};
+$('ctx-print').onclick = () => {
+  wvExec(`window.print()`); hideCtxMenu();
+};
+$('ctx-save-bm').onclick = () => { $('btn-bm').click(); hideCtxMenu(); };
+$('ctx-add-fav').onclick = async () => {
+  // Add current page to quicklinks (お気に入り = newtab quicklinks)
+  const tab = tabs.find(t => t.id === activeId);
+  if (!tab || tab.url === 'newtab') { toast('ページを開いてから追加してください'); hideCtxMenu(); return; }
+  const ql = getQuicklinks();
+  if (ql.find(q => q.url === tab.url)) { toast('すでにお気に入りに追加済みです'); hideCtxMenu(); return; }
+  const domain = (() => { try { return new URL(tab.url).hostname.replace('www.',''); } catch { return tab.url.slice(0,12); } })();
+  ql.push({ name: tab.title?.slice(0,10) || domain, url: tab.url, emoji: '🔗', color: '#7c6af7' });
+  settings.quicklinks = ql;
+  await persistSettings();
+  renderQlEditor(); renderQl();
+  toast(`🔗 お気に入りに追加しました: ${tab.title || tab.url}`);
+  hideCtxMenu();
+};
+$('ctx-copy-url').onclick = () => {
+  const tab = tabs.find(t => t.id === activeId);
+  if (tab?.url) { navigator.clipboard.writeText(tab.url); toast('URLをコピーしました'); }
+  hideCtxMenu();
+};
+$('ctx-new-tab').onclick   = () => { createTab('newtab'); hideCtxMenu(); };
+$('ctx-find').onclick      = () => { toggleFind();        hideCtxMenu(); };
+$('ctx-view-source').onclick = () => {
+  const tab = tabs.find(t => t.id === activeId);
+  if (tab?.url) createTab('view-source:' + tab.url);
+  hideCtxMenu();
+};
+$('ctx-devtools').onclick  = () => { $('btn-devtools').click(); hideCtxMenu(); };
+$('ctx-close-tab').onclick = () => { if(activeId) closeTab(activeId); hideCtxMenu(); };
+
+// ── Font system ───────────────────────────────────────────────
+let availableFonts = [];
+
+async function loadFontList() {
+  availableFonts = await window.shark.getFonts();
+  const sel = $('set-font');
+  while (sel.options.length > 1) sel.remove(1);
+  availableFonts.forEach(f => {
+    const opt = document.createElement('option');
+    opt.value = f.filename;
+    opt.textContent = f.name;
+    sel.appendChild(opt);
+  });
+  sel.value = settings.font || '';
+  updateFontPreview(settings.font || '');
+}
+
+async function applyFont(filename) {
+  if (!filename) {
+    document.documentElement.style.removeProperty('--font-family');
+    return;
+  }
+  try {
+    const data = await window.shark.getFontData(filename);
+    if (!data) return;
+    const fontName = 'SharkCustomFont';
+    const css = `@font-face {
+      font-family: '${fontName}';
+      src: url('data:font/${data.mime};base64,${data.base64}') format('${data.mime}');
+      font-weight: normal; font-style: normal;
+    }`;
+    let styleEl = document.getElementById('shark-custom-font-style');
+    if (!styleEl) {
+      styleEl = document.createElement('style');
+      styleEl.id = 'shark-custom-font-style';
+      document.head.appendChild(styleEl);
+    }
+    styleEl.textContent = css;
+    document.documentElement.style.setProperty(
+      '--font-family', `'${fontName}', -apple-system, 'Segoe UI', 'Noto Sans JP', sans-serif`
+    );
+  } catch(e) { console.error('Font apply failed', e); }
+}
+
+async function updateFontPreview(filename) {
+  const preview = $('font-preview');
+  if (!filename) { preview.style.display = 'none'; return; }
+  try {
+    const data = await window.shark.getFontData(filename);
+    if (!data) { preview.style.display = 'none'; return; }
+    const fontName = 'SharkPreview_' + filename.replace(/\W/g,'_');
+    const css = `@font-face { font-family:'${fontName}';
+      src:url('data:font/${data.mime};base64,${data.base64}') format('${data.mime}'); }`;
+    let ps = document.getElementById('shark-preview-font-style');
+    if (!ps) { ps = document.createElement('style'); ps.id='shark-preview-font-style'; document.head.appendChild(ps); }
+    ps.textContent = css;
+    preview.style.fontFamily = `'${fontName}', sans-serif`;
+    preview.style.display = 'block';
+  } catch { preview.style.display = 'none'; }
+}
+
+$('set-font').addEventListener('change', async (e) => {
+  settings.font = e.target.value;
+  await applyFont(settings.font);
+  await updateFontPreview(settings.font);
+  autoSave(true);
+});
+
+// ── Private mode badge ────────────────────────────────────────
+function updatePrivateBadge() {
+  $('private-badge').style.display = settings.privateMode ? 'block' : 'none';
+}
+function collectSession() {
+  const sessionTabs = tabs.map(t => ({
+    url:   t.url,
+    title: t.title,
+  }));
+  const activeIndex = tabs.findIndex(t => t.id === activeId);
+  return { tabs: sessionTabs, activeIndex: Math.max(0, activeIndex) };
+}
+
+// Main process sends this just before the window closes
+window.shark.onBeforeClose(() => {
+  const session = collectSession();
+  // Send synchronously so it completes before process exits
+  window.shark.saveSessionSync(session);
+});
+
+// ── Init ───────────────────────────────────────────────────────
+async function init(){
+  [bookmarks, history, settings] = await Promise.all([
+    window.shark.getBookmarks(),
+    window.shark.getHistory(),
+    window.shark.getSettings(),
+  ]);
+  applyTheme(settings.theme || 'dark');
+  if (settings.font) await applyFont(settings.font);
+  loadSetUI(); renderBm(); renderHist(); renderQl();
+  await loadDownloads();
+  await loadPluginPanel();
+  await loadFontList();
+  updatePrivateBadge();
+  attachAutoSave(); // enable auto-save on all settings inputs
+
+  const session = settings.session;
+  if (session && session.tabs && session.tabs.length > 0) {
+    // Restore previous session
+    session.tabs.forEach((t) => {
+      createTab(t.url, false);
+      const tab = tabs[tabs.length - 1];
+      if (t.title && t.title !== '新しいタブ') {
+        tab.title = t.title;
+        const el = document.querySelector(`.tab[data-id="${tab.id}"] .tab-title`);
+        if (el) el.textContent = t.title;
+      }
+    });
+    const targetIdx = Math.min(session.activeIndex, tabs.length - 1);
+    activateTab(tabs[targetIdx].id);
+  } else {
+    // First launch: open new tab page AND load homepage in background
+    createTab('newtab');
+    // Also open homepage as a second tab so it's ready
+    const homepage = settings.homepage || 'https://www.google.com';
+    if (homepage && homepage !== 'newtab') {
+      createTab(homepage, false); // open in background
+    }
+  }
+}
+init();
+</script>
+</body>
+</html>

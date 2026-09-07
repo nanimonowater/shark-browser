@@ -1,0 +1,22 @@
+{
+  "name": "フォーカスモード",
+  "id": "focus-mode",
+  "version": "1.0.0",
+  "description": "サイドバー・広告エリア・SNSウィジェットを非表示にして読書に集中できます。",
+  "author": "Shark Browser Team",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "css": ["content.css"],
+      "run_at": "document_end"
+    }
+  ],
+  "settings": [
+    {
+      "key": "enabled",
+      "label": "フォーカスモードを有効化",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}

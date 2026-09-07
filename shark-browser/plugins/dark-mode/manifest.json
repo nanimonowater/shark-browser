@@ -1,0 +1,22 @@
+{
+  "name": "強制ダークモード",
+  "id": "dark-mode",
+  "version": "1.0.0",
+  "description": "すべてのWebページを強制的にダークモードにします。",
+  "author": "Shark Browser Team",
+  "content_scripts": [
+    {
+      "matches": ["*://*/*"],
+      "css": ["content.css"],
+      "run_at": "document_start"
+    }
+  ],
+  "settings": [
+    {
+      "key": "enabled",
+      "label": "強制ダークモード",
+      "type": "toggle",
+      "default": false
+    }
+  ]
+}
